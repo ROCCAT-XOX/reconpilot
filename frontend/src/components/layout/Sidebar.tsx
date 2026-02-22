@@ -42,7 +42,7 @@ export default function Sidebar() {
       </nav>
 
       <div className="p-4 border-t border-dark-700">
-        <p className="text-xs text-gray-600">v0.1.0 · Epic 1</p>
+        <p className="text-xs text-gray-600">v0.2.0 · ReconForge</p>
       </div>
     </aside>
   )
