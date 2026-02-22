@@ -28,10 +28,10 @@ celery_app.conf.beat_schedule = {
         "task": "maintenance.cleanup_results",
         "schedule": crontab(minute=0, hour="*/6"),
     },
-    # Daily database backup at 02:00 UTC
+    # Daily database backup at 03:00 UTC
     "daily-database-backup": {
         "task": "maintenance.database_backup",
-        "schedule": crontab(minute=0, hour=2),
+        "schedule": crontab(minute=0, hour=3),
     },
 }
 

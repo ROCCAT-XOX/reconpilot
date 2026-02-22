@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ReconForge Database Backup Script
-# Called by Celery Beat daily at 02:00 UTC
+# Called by Celery Beat daily at 03:00 UTC
 # Can also be run manually: bash scripts/backup.sh
 
 set -euo pipefail
