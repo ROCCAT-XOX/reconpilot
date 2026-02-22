@@ -1,54 +1,22 @@
 ---
-# Namespace
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: reconforge
----
 # Secrets
 apiVersion: v1
 kind: Secret
 metadata:
   name: reconforge-secret
-  namespace: reconforge
+  namespace: flow
 type: Opaque
 stringData:
-  SECRET_KEY: "changeme-generate-with-openssl-rand-hex-32"
-  DB_PASSWORD: "changeme-strong-db-password"
-  REDIS_PASSWORD: "changeme-redis-password"
----
-# PersistentVolumeClaim für PostgreSQL (Daten überleben Pod-Neustarts)
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: reconforge-postgres-pvc
-  namespace: reconforge
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
----
-# PersistentVolumeClaim für Scan-Artefakte & Reports
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: reconforge-data-pvc
-  namespace: reconforge
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
+  SECRET_KEY: "491197621b3c5896458af18819913b0154bb87ed6c853ad398f23e0ebd8fa2dc"
+  DB_PASSWORD: "reconforge-test-db-2026"
+  REDIS_PASSWORD: "reconforge-test-redis-2026"
 ---
 # Single Pod: App + PostgreSQL + Redis
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: reconforge
-  namespace: reconforge
+  namespace: flow
   annotations:
     keel.sh/policy: force
     keel.sh/trigger: poll
@@ -57,7 +25,7 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate  # Wichtig bei PVC — kein Rolling Update möglich
+    type: Recreate
   selector:
     matchLabels:
       app: reconforge
@@ -68,28 +36,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/hostname: k3s-node-1-promedia
-      
-      # Init-Container: DB-Migration vor App-Start
-      initContainers:
-        - name: db-migrate
-          image: registry.arcadia-capitals.com/reconpilot:latest
-          command: ["sh", "-c", "cd /app/backend && alembic upgrade head"]
-          env:
-            - name: DATABASE_URL
-              value: "postgresql+asyncpg://reconforge:$(DB_PASSWORD)@localhost:5432/reconforge"
-            - name: DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: reconforge-secret
-                  key: DB_PASSWORD
-            - name: SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: reconforge-secret
-                  key: SECRET_KEY
-
       containers:
-        # === ReconForge App (Frontend + Backend + Nginx) ===
         - name: app
           image: registry.arcadia-capitals.com/reconpilot:latest
           imagePullPolicy: Always
@@ -150,9 +97,8 @@ spec:
               port: 80
             initialDelaySeconds: 10
             periodSeconds: 5
-            failureThreshold: 30  # 150s max Startup
+            failureThreshold: 30
 
-        # === PostgreSQL (gleicher Pod → localhost:5432) ===
         - name: postgres
           image: postgres:16-alpine
           ports:
@@ -190,7 +136,6 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 5
 
-        # === Redis (gleicher Pod → localhost:6379) ===
         - name: redis
           image: redis:7-alpine
           args:
@@ -233,18 +178,16 @@ spec:
 
       volumes:
         - name: scan-data
-          persistentVolumeClaim:
-            claimName: reconforge-data-pvc
+          emptyDir: {}
         - name: postgres-data
-          persistentVolumeClaim:
-            claimName: reconforge-postgres-pvc
+          emptyDir: {}
 ---
-# ClusterIP Service
+# Service
 apiVersion: v1
 kind: Service
 metadata:
   name: reconforge
-  namespace: reconforge
+  namespace: flow
 spec:
   type: ClusterIP
   ports:
@@ -254,12 +197,12 @@ spec:
   selector:
     app: reconforge
 ---
-# NodePort Service für externen Zugriff
+# NodePort Service
 apiVersion: v1
 kind: Service
 metadata:
   name: reconforge-nodeport
-  namespace: reconforge
+  namespace: flow
 spec:
   type: NodePort
   ports:
