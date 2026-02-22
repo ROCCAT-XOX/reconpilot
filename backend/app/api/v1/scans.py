@@ -1,21 +1,35 @@
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from app.api.deps import CurrentUser, DB
+from app.api.deps import CurrentUser, DB, PentesterOrAbove
 from app.models.scan import Scan, ScanJob
+from app.models.scope import ScopeTarget
+from app.schemas.scan import ScanCreate, ScanResponse, ScanJobResponse
+from app.orchestrator.profiles import get_profile, list_profiles, PROFILES
+from app.tools.registry import tool_registry
 
 router = APIRouter()
 
 
-class ScanResponse(BaseModel):
-    id: str
-    project_id: str
-    name: str | None
-    profile: str
-    status: str
-    created_at: str
+def _scan_to_response(s: Scan) -> ScanResponse:
+    return ScanResponse(
+        id=str(s.id),
+        project_id=str(s.project_id),
+        name=s.name,
+        profile=s.profile,
+        status=s.status,
+        config=s.config,
+        started_at=s.started_at.isoformat() if s.started_at else None,
+        completed_at=s.completed_at.isoformat() if s.completed_at else None,
+        started_by=str(s.started_by) if s.started_by else None,
+        created_at=s.created_at.isoformat(),
+    )
 
+
+# Scan endpoints under /projects/{project_id}/scans
+# But also direct access under /scans/{scan_id}
 
 @router.get("/{scan_id}", response_model=ScanResponse)
 async def get_scan(scan_id: str, db: DB, current_user: CurrentUser):
@@ -23,24 +37,182 @@ async def get_scan(scan_id: str, db: DB, current_user: CurrentUser):
     scan = result.scalar_one_or_none()
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
-    return ScanResponse(
-        id=str(scan.id), project_id=str(scan.project_id), name=scan.name,
-        profile=scan.profile, status=scan.status, created_at=scan.created_at.isoformat(),
-    )
+    return _scan_to_response(scan)
 
 
-@router.get("/{scan_id}/jobs")
+@router.get("/{scan_id}/jobs", response_model=list[ScanJobResponse])
 async def get_scan_jobs(scan_id: str, db: DB, current_user: CurrentUser):
-    result = await db.execute(select(ScanJob).where(ScanJob.scan_id == scan_id))
+    result = await db.execute(
+        select(ScanJob).where(ScanJob.scan_id == scan_id).order_by(ScanJob.created_at)
+    )
     jobs = result.scalars().all()
     return [
-        {
-            "id": str(j.id),
-            "tool_name": j.tool_name,
-            "phase": j.phase,
-            "status": j.status,
-            "target": j.target,
-            "duration_seconds": j.duration_seconds,
-        }
+        ScanJobResponse(
+            id=str(j.id),
+            scan_id=str(j.scan_id),
+            tool_name=j.tool_name,
+            phase=j.phase,
+            status=j.status,
+            target=j.target,
+            duration_seconds=j.duration_seconds,
+            error_message=j.error_message,
+            started_at=j.started_at.isoformat() if j.started_at else None,
+            completed_at=j.completed_at.isoformat() if j.completed_at else None,
+        )
         for j in jobs
     ]
+
+
+@router.get("/{scan_id}/timeline")
+async def get_scan_timeline(scan_id: str, db: DB, current_user: CurrentUser):
+    result = await db.execute(
+        select(ScanJob).where(ScanJob.scan_id == scan_id).order_by(ScanJob.created_at)
+    )
+    jobs = result.scalars().all()
+    events = []
+    for j in jobs:
+        if j.started_at:
+            events.append({
+                "timestamp": j.started_at.isoformat(),
+                "event": "tool.started",
+                "tool": j.tool_name,
+                "phase": j.phase,
+                "details": {"target": j.target},
+            })
+        if j.completed_at:
+            events.append({
+                "timestamp": j.completed_at.isoformat(),
+                "event": "tool.completed",
+                "tool": j.tool_name,
+                "phase": j.phase,
+                "details": {
+                    "target": j.target,
+                    "status": j.status,
+                    "duration": j.duration_seconds,
+                },
+            })
+    return sorted(events, key=lambda e: e["timestamp"])
+
+
+@router.put("/{scan_id}/pause")
+async def pause_scan(scan_id: str, db: DB, current_user: PentesterOrAbove):
+    result = await db.execute(select(Scan).where(Scan.id == scan_id))
+    scan = result.scalar_one_or_none()
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    if scan.status != "running":
+        raise HTTPException(status_code=400, detail="Scan is not running")
+    scan.status = "paused"
+    await db.flush()
+    return {"detail": "Scan paused", "status": "paused"}
+
+
+@router.put("/{scan_id}/resume")
+async def resume_scan(scan_id: str, db: DB, current_user: PentesterOrAbove):
+    result = await db.execute(select(Scan).where(Scan.id == scan_id))
+    scan = result.scalar_one_or_none()
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    if scan.status != "paused":
+        raise HTTPException(status_code=400, detail="Scan is not paused")
+    scan.status = "running"
+    await db.flush()
+    return {"detail": "Scan resumed", "status": "running"}
+
+
+@router.put("/{scan_id}/cancel")
+async def cancel_scan(scan_id: str, db: DB, current_user: PentesterOrAbove):
+    result = await db.execute(select(Scan).where(Scan.id == scan_id))
+    scan = result.scalar_one_or_none()
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    if scan.status not in ("running", "paused", "pending"):
+        raise HTTPException(status_code=400, detail="Scan cannot be cancelled")
+    scan.status = "cancelled"
+    scan.completed_at = datetime.now(timezone.utc)
+    await db.flush()
+    return {"detail": "Scan cancelled", "status": "cancelled"}
+
+
+# --- Project-scoped scan endpoints (mounted under /projects) ---
+
+class ProjectScanRouter:
+    """Additional endpoints for project-scoped scan operations."""
+
+    @staticmethod
+    async def list_project_scans(project_id: str, db, current_user):
+        result = await db.execute(
+            select(Scan).where(Scan.project_id == project_id).order_by(Scan.created_at.desc())
+        )
+        scans = result.scalars().all()
+        return [_scan_to_response(s) for s in scans]
+
+    @staticmethod
+    async def create_scan(project_id: str, data: ScanCreate, db, current_user):
+        # Verify profile
+        profile = get_profile(data.profile)
+        if not profile and data.profile != "custom":
+            raise HTTPException(status_code=400, detail=f"Unknown profile: {data.profile}")
+
+        # Get scope targets
+        scope_result = await db.execute(
+            select(ScopeTarget).where(
+                ScopeTarget.project_id == project_id,
+                ScopeTarget.is_excluded == False,
+            )
+        )
+        scope_targets_list = [st.target_value for st in scope_result.scalars().all()]
+
+        targets = data.targets or scope_targets_list
+        if not targets:
+            raise HTTPException(status_code=400, detail="No targets specified and no scope defined")
+
+        scan = Scan(
+            project_id=project_id,
+            name=data.name or f"{data.profile.title()} Scan",
+            profile=data.profile,
+            config=data.config,
+            started_by=current_user.id,
+        )
+        db.add(scan)
+        await db.flush()
+
+        # Queue Celery task
+        try:
+            from workers.tasks.scan_tasks import execute_scan_task
+            execute_scan_task.delay(
+                str(scan.id), data.profile, targets, scope_targets_list, data.config
+            )
+        except Exception:
+            # If Celery is not available, just mark as pending
+            pass
+
+        return _scan_to_response(scan)
+
+
+# Mount project scan endpoints on projects router
+from fastapi import APIRouter as _APIRouter
+
+project_scans_router = _APIRouter()
+
+
+@project_scans_router.get("/{project_id}/scans", response_model=list[ScanResponse])
+async def list_project_scans(project_id: str, db: DB, current_user: CurrentUser):
+    return await ProjectScanRouter.list_project_scans(project_id, db, current_user)
+
+
+@project_scans_router.post("/{project_id}/scans", response_model=ScanResponse, status_code=201)
+async def create_scan(project_id: str, data: ScanCreate, db: DB, current_user: PentesterOrAbove):
+    return await ProjectScanRouter.create_scan(project_id, data, db, current_user)
+
+
+# Tools and profiles endpoints
+
+@router.get("/tools/available")
+async def list_tools(current_user: CurrentUser):
+    return tool_registry.list_tools()
+
+
+@router.get("/profiles/available")
+async def get_profiles(current_user: CurrentUser):
+    return list_profiles()
