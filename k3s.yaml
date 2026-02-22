@@ -17,6 +17,32 @@ stringData:
   DB_PASSWORD: "changeme-strong-db-password"
   REDIS_PASSWORD: "changeme-redis-password"
 ---
+# PersistentVolumeClaim für PostgreSQL (Daten überleben Pod-Neustarts)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: reconforge-postgres-pvc
+  namespace: reconforge
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+# PersistentVolumeClaim für Scan-Artefakte & Reports
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: reconforge-data-pvc
+  namespace: reconforge
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
 # Single Pod: App + PostgreSQL + Redis
 apiVersion: apps/v1
 kind: Deployment
@@ -30,6 +56,8 @@ metadata:
     keel.sh/match-tag: "true"
 spec:
   replicas: 1
+  strategy:
+    type: Recreate  # Wichtig bei PVC — kein Rolling Update möglich
   selector:
     matchLabels:
       app: reconforge
@@ -40,6 +68,26 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/hostname: k3s-node-1-promedia
+      
+      # Init-Container: DB-Migration vor App-Start
+      initContainers:
+        - name: db-migrate
+          image: registry.arcadia-capitals.com/reconpilot:latest
+          command: ["sh", "-c", "cd /app/backend && alembic upgrade head"]
+          env:
+            - name: DATABASE_URL
+              value: "postgresql+asyncpg://reconforge:$(DB_PASSWORD)@localhost:5432/reconforge"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: reconforge-secret
+                  key: DB_PASSWORD
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: reconforge-secret
+                  key: SECRET_KEY
+
       containers:
         # === ReconForge App (Frontend + Backend + Nginx) ===
         - name: app
@@ -86,14 +134,23 @@ spec:
             httpGet:
               path: /api/v1/health
               port: 80
-            initialDelaySeconds: 30
-            periodSeconds: 10
+            initialDelaySeconds: 45
+            periodSeconds: 15
+            failureThreshold: 3
           readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            failureThreshold: 3
+          startupProbe:
             httpGet:
               path: /api/v1/health
               port: 80
             initialDelaySeconds: 10
             periodSeconds: 5
+            failureThreshold: 30  # 150s max Startup
 
         # === PostgreSQL (gleicher Pod → localhost:5432) ===
         - name: postgres
@@ -136,7 +193,18 @@ spec:
         # === Redis (gleicher Pod → localhost:6379) ===
         - name: redis
           image: redis:7-alpine
-          command: ["redis-server", "--requirepass", "$(REDIS_PASSWORD)", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+          args:
+            - "redis-server"
+            - "--requirepass"
+            - "$(REDIS_PASSWORD)"
+            - "--maxmemory"
+            - "128mb"
+            - "--maxmemory-policy"
+            - "allkeys-lru"
+            - "--save"
+            - ""
+            - "--appendonly"
+            - "no"
           ports:
             - containerPort: 6379
           env:
@@ -152,17 +220,24 @@ spec:
             limits:
               memory: "128Mi"
               cpu: "200m"
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "-a", "$(REDIS_PASSWORD)", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
           livenessProbe:
             exec:
-              command: ["redis-cli", "ping"]
+              command: ["redis-cli", "-a", "$(REDIS_PASSWORD)", "ping"]
             initialDelaySeconds: 10
             periodSeconds: 10
 
       volumes:
         - name: scan-data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: reconforge-data-pvc
         - name: postgres-data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: reconforge-postgres-pvc
 ---
 # ClusterIP Service
 apiVersion: v1
