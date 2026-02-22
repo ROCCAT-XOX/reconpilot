@@ -1,12 +1,12 @@
-from app.tools.base import BaseToolWrapper, ToolCategory
-from app.tools.scanning.nmap import NmapWrapper
-from app.tools.scanning.nuclei import NucleiWrapper
+from app.tools.base import BaseToolWrapper
+from app.tools.exploitation.sqlmap import SqlmapWrapper
+from app.tools.recon.httpx import HttpxWrapper
+from app.tools.recon.subfinder import SubfinderWrapper
 from app.tools.scanning.ffuf import FfufWrapper
 from app.tools.scanning.nikto import NiktoWrapper
-from app.tools.recon.subfinder import SubfinderWrapper
-from app.tools.recon.httpx import HttpxWrapper
+from app.tools.scanning.nmap import NmapWrapper
+from app.tools.scanning.nuclei import NucleiWrapper
 from app.tools.web_analysis.sslyze import SSLyzeWrapper
-from app.tools.exploitation.sqlmap import SqlmapWrapper
 
 
 class ToolRegistry:

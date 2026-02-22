@@ -2,10 +2,10 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from app.api.deps import CurrentUser, DB, PentesterOrAbove
+from app.api.deps import DB, CurrentUser, PentesterOrAbove
 from app.models.project import Project
 from app.models.scope import ScopeTarget
-from app.services.scope_validator import ScopeValidator, build_scope_validator
+from app.services.scope_validator import build_scope_validator
 
 router = APIRouter()
 

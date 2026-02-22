@@ -39,7 +39,31 @@ target-version = "py312"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W"]
+select = ["E", "F", "I", "N", "W", "S", "B", "UP", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "S105", "S106", "E501"]  # Allow assert, hardcoded passwords, long lines in tests
+"alembic/*" = ["UP", "E501", "I001"]
+"app/config.py" = ["S105"]
+"app/tools/base.py" = ["S603", "S607", "UP042"]  # subprocess calls, partial paths, str+enum
+"app/tools/scanning/*.py" = ["S314", "S603", "S607"]  # XML parsing, subprocess
+"app/tools/recon/*.py" = ["S603", "S607"]
+"app/tools/exploitation/*.py" = ["S603", "S607"]
+"app/tools/web_analysis/*.py" = ["S603", "S607"]
+"app/api/deps.py" = ["B008", "UP046", "B904", "E712"]  # Depends(), Generic, raise from, SQLAlchemy == False
+"app/api/v1/*.py" = ["B008", "B904", "E712", "E501"]  # Depends(), raise from, SQLAlchemy == False
+"app/api/middleware/*.py" = ["B904", "S110", "E501"]
+"app/core/security.py" = ["B904", "W293"]
+"app/schemas/user.py" = ["S105"]  # token_type field name
+"app/tools/exploitation/sqlmap.py" = ["S603", "S607", "SIM102", "E501"]
+"app/tools/recon/subfinder.py" = ["S603", "S607", "E501"]
+"app/tools/scanning/nikto.py" = ["S314", "S603", "S607", "E501"]
+"app/core/events.py" = ["S110", "B007"]
+"app/api/v1/scans.py" = ["B008", "B904", "E712", "E501", "S110"]
+"app/orchestrator/*.py" = ["SIM102", "E501"]
+"app/schemas/report.py" = ["E501"]
+"app/tools/web_analysis/sslyze.py" = ["S603", "S607", "SIM102"]
+"workers/*.py" = ["E501"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

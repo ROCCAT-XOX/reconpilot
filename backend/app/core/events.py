@@ -1,7 +1,6 @@
-import asyncio
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 logger = logging.getLogger(__name__)
@@ -28,7 +27,7 @@ class WebSocketEventManager:
         message = json.dumps({
             "event": event,
             "scan_id": str(scan_id),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "data": data,
         })
         # Broadcast to all connected clients for now

@@ -1,5 +1,6 @@
 import json
 import logging
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.core.events import event_manager

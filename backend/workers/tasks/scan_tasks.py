@@ -14,11 +14,11 @@ def execute_scan_task(self, scan_id: str, profile_name: str, targets: list[str],
 
     async def _run():
         from app.core.database import async_session
-        from app.tools.registry import tool_registry
+        from app.core.events import event_manager
         from app.orchestrator.chain_logic import ChainLogicEngine
         from app.orchestrator.engine import PipelineEngine
         from app.orchestrator.profiles import get_profile
-        from app.core.events import event_manager
+        from app.tools.registry import tool_registry
 
         profile = get_profile(profile_name)
         if not profile:

@@ -5,14 +5,14 @@ from sqlalchemy import select
 from app.api.deps import DB, CurrentUser, oauth2_scheme
 from app.core.redis import blacklist_token, is_token_blacklisted
 from app.core.security import (
+    InvalidTokenError,
+    TokenExpiredError,
+    WrongTokenTypeError,
     create_access_token,
     create_refresh_token,
     get_token_ttl_seconds,
     verify_password,
     verify_token,
-    TokenExpiredError,
-    InvalidTokenError,
-    WrongTokenTypeError,
 )
 from app.models.user import User
 from app.schemas.user import LoginRequest, RefreshRequest, TokenResponse, UserResponse

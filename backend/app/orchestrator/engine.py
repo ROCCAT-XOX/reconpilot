@@ -1,17 +1,17 @@
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.tools.registry import ToolRegistry
+from app.core.events import WebSocketEventManager
+from app.models.finding import Finding
+from app.models.scan import Scan, ScanJob
 from app.orchestrator.chain_logic import ChainLogicEngine
 from app.orchestrator.profiles import ScanProfile
-from app.core.events import WebSocketEventManager
-from app.models.scan import Scan, ScanJob
-from app.models.finding import Finding
 from app.services.finding_service import compute_finding_fingerprint
+from app.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ class PipelineEngine:
         scan = result.scalar_one_or_none()
         if scan:
             scan.status = "running"
-            scan.started_at = datetime.now(timezone.utc)
+            scan.started_at = datetime.now(UTC)
             await self.db.flush()
 
         discovered_targets: dict[str, set] = {
@@ -271,11 +271,11 @@ class PipelineEngine:
         if scan:
             scan.status = status
             if status in ("completed", "failed", "cancelled"):
-                scan.completed_at = datetime.now(timezone.utc)
+                scan.completed_at = datetime.now(UTC)
             await self.db.flush()
 
     async def _count_findings(self, scan_id) -> int:
-        from sqlalchemy import select, func
+        from sqlalchemy import func, select
         result = await self.db.execute(
             select(func.count()).select_from(Finding).where(Finding.scan_id == scan_id)
         )

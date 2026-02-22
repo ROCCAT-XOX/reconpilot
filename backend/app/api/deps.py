@@ -1,5 +1,5 @@
-from typing import Annotated, Generic, TypeVar
 from dataclasses import dataclass
+from typing import Annotated, Generic, TypeVar
 
 from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordBearer
@@ -8,13 +8,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import (
-    verify_token,
-    TokenExpiredError,
-    InvalidTokenError,
-    WrongTokenTypeError,
-)
 from app.core.redis import is_token_blacklisted
+from app.core.security import (
+    InvalidTokenError,
+    TokenExpiredError,
+    WrongTokenTypeError,
+    verify_token,
+)
 from app.models.user import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")

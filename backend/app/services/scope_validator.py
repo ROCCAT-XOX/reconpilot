@@ -52,10 +52,7 @@ class ScopeValidator:
 
     def _is_excluded(self, value: str) -> bool:
         """Check if a value is explicitly excluded."""
-        for excl in self.excluded:
-            if excl["value"] == value:
-                return True
-        return False
+        return any(excl["value"] == value for excl in self.excluded)
 
     def _matches(self, target: str, scope_entry: dict) -> bool:
         """Check if a target matches a scope entry."""

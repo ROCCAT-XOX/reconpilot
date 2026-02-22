@@ -1,4 +1,3 @@
-from datetime import datetime
 from pydantic import BaseModel, Field
 
 
@@ -30,7 +29,6 @@ class UserResponse(BaseModel):
     def model_validate(cls, obj, **kwargs):
         """Support ORM objects by converting UUID/datetime fields."""
         if hasattr(obj, "__table__"):
-            from dataclasses import dataclass
             data = {
                 "id": str(obj.id),
                 "email": obj.email,

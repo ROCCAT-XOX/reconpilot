@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Date, DateTime, ForeignKey, String, Text
@@ -11,11 +11,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
 if TYPE_CHECKING:
-    from app.models.user import ProjectMember
-    from app.models.scope import ScopeTarget
-    from app.models.scan import Scan
     from app.models.finding import Finding
     from app.models.report import Report
+    from app.models.scan import Scan
+    from app.models.scope import ScopeTarget
+    from app.models.user import ProjectMember
 
 
 class Project(Base):
@@ -37,12 +37,12 @@ class Project(Base):
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     # Relationships

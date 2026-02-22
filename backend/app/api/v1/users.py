@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
-from app.api.deps import AdminUser, CurrentUser, DB, Pagination, PaginatedResponse
+from app.api.deps import DB, AdminUser, CurrentUser, PaginatedResponse, Pagination
 from app.core.security import hash_password
 from app.models.user import User
-from app.schemas.user import UserCreate, UserUpdate, UserResponse
+from app.schemas.user import UserCreate, UserResponse, UserUpdate
 
 router = APIRouter()
 

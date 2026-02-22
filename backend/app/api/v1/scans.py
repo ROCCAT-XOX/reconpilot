@@ -1,12 +1,13 @@
-from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException
-from sqlalchemy import select, func
+from datetime import UTC, datetime
 
-from app.api.deps import CurrentUser, DB, PentesterOrAbove, Pagination, PaginatedResponse
+from fastapi import APIRouter, HTTPException
+from sqlalchemy import func, select
+
+from app.api.deps import DB, CurrentUser, PaginatedResponse, Pagination, PentesterOrAbove
 from app.models.scan import Scan, ScanJob
 from app.models.scope import ScopeTarget
-from app.schemas.scan import ScanCreate, ScanResponse, ScanJobResponse
-from app.orchestrator.profiles import get_profile, list_profiles, PROFILES
+from app.orchestrator.profiles import get_profile, list_profiles
+from app.schemas.scan import ScanCreate, ScanJobResponse, ScanResponse
 from app.tools.registry import tool_registry
 
 router = APIRouter()
@@ -110,7 +111,7 @@ async def cancel_scan(scan_id: str, db: DB, current_user: PentesterOrAbove):
     if scan.status not in ("running", "paused", "pending"):
         raise HTTPException(status_code=400, detail="Scan cannot be cancelled")
     scan.status = "cancelled"
-    scan.completed_at = datetime.now(timezone.utc)
+    scan.completed_at = datetime.now(UTC)
     await db.flush()
     return {"detail": "Scan cancelled", "status": "cancelled"}
 
@@ -153,7 +154,7 @@ async def create_scan(project_id: str, data: ScanCreate, db: DB, current_user: P
     scope_result = await db.execute(
         select(ScopeTarget).where(
             ScopeTarget.project_id == project_id,
-            ScopeTarget.is_excluded == False,
+            not ScopeTarget.is_excluded,
         )
     )
     scope_targets_list = [st.target_value for st in scope_result.scalars().all()]

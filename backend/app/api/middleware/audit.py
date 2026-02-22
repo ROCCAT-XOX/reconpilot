@@ -1,14 +1,12 @@
 import logging
 import time
-import uuid
-from datetime import datetime, timezone
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
 from app.core.database import async_session
-from app.models.audit_log import AuditLog
 from app.core.security import verify_token
+from app.models.audit_log import AuditLog
 
 logger = logging.getLogger("reconforge.audit")
 

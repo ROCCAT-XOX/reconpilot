@@ -1,13 +1,18 @@
 from datetime import date
+
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import CurrentUser, DB, LeadOrAdmin, Pagination, PaginatedResponse
+from app.api.deps import DB, CurrentUser, LeadOrAdmin, PaginatedResponse, Pagination
 from app.models.project import Project
 from app.models.user import ProjectMember, User
 from app.schemas.project import (
-    MemberAdd, MemberResponse, ProjectCreate, ProjectResponse, ProjectUpdate,
+    MemberAdd,
+    MemberResponse,
+    ProjectCreate,
+    ProjectResponse,
+    ProjectUpdate,
 )
 
 router = APIRouter()

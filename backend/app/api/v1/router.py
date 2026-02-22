@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 
-from app.api.v1 import auth, projects, scans, findings, reports, users, scope
-from app.api.v1.scans import project_scans_router
+from app.api.v1 import auth, findings, projects, reports, scans, scope, users
 from app.api.v1.findings import project_findings_router
+from app.api.v1.scans import project_scans_router
 
 api_router = APIRouter()
 

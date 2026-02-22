@@ -1,15 +1,20 @@
-from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import select, func
+from datetime import UTC, datetime
 
-from app.api.deps import CurrentUser, DB, PentesterOrAbove, Pagination, PaginatedResponse
+from fastapi import APIRouter, HTTPException, Query
+from sqlalchemy import func, select
+
+from app.api.deps import DB, CurrentUser, PaginatedResponse, Pagination, PentesterOrAbove
 from app.models.finding import Finding, FindingComment
 from app.models.report import ScanComparison
 from app.schemas.finding import (
-    FindingResponse, FindingUpdate, CommentCreate, CommentResponse,
-    FindingStats, ScanComparisonRequest, ScanComparisonResponse,
+    CommentCreate,
+    CommentResponse,
+    FindingResponse,
+    FindingStats,
+    FindingUpdate,
+    ScanComparisonRequest,
+    ScanComparisonResponse,
 )
-from app.services.finding_service import compute_finding_fingerprint
 
 router = APIRouter()
 
@@ -50,7 +55,7 @@ async def verify_finding(finding_id: str, db: DB, current_user: PentesterOrAbove
 
     finding.status = "confirmed"
     finding.verified_by = current_user.id
-    finding.verified_at = datetime.now(timezone.utc)
+    finding.verified_at = datetime.now(UTC)
     await db.flush()
     return {"status": "confirmed", "verified_by": str(current_user.id)}
 
@@ -124,7 +129,7 @@ async def list_project_findings(
     if source_tool:
         base_query = base_query.where(Finding.source_tool == source_tool)
     if not include_duplicates:
-        base_query = base_query.where(Finding.is_duplicate == False)
+        base_query = base_query.where(not Finding.is_duplicate)
 
     # Count
     count_result = await db.execute(
@@ -156,7 +161,7 @@ async def get_finding_stats(project_id: str, db: DB, current_user: CurrentUser):
     findings_result = await db.execute(
         select(Finding).where(
             Finding.project_id == project_id,
-            Finding.is_duplicate == False,
+            not Finding.is_duplicate,
         )
     )
     findings = findings_result.scalars().all()
@@ -187,12 +192,12 @@ async def compare_scans(
 ):
     """Compare findings between two scans."""
     result_a = await db.execute(
-        select(Finding).where(Finding.scan_id == data.scan_a_id, Finding.is_duplicate == False)
+        select(Finding).where(Finding.scan_id == data.scan_a_id, not Finding.is_duplicate)
     )
     findings_a = {f.fingerprint: f for f in result_a.scalars().all() if f.fingerprint}
 
     result_b = await db.execute(
-        select(Finding).where(Finding.scan_id == data.scan_b_id, Finding.is_duplicate == False)
+        select(Finding).where(Finding.scan_id == data.scan_b_id, not Finding.is_duplicate)
     )
     findings_b = {f.fingerprint: f for f in result_b.scalars().all() if f.fingerprint}
 

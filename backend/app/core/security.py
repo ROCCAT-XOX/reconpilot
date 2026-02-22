@@ -1,6 +1,6 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from jose import jwt, JWTError, ExpiredSignatureError
+from jose import ExpiredSignatureError, JWTError, jwt
 from passlib.context import CryptContext
 
 from app.config import settings
@@ -36,7 +36,7 @@ class WrongTokenTypeError(TokenError):
 # --- Token Creation ---
 
 def create_access_token(user_id: str, role: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {
         "sub": user_id,
         "role": role,
@@ -47,7 +47,7 @@ def create_access_token(user_id: str, role: str) -> str:
 
 
 def create_refresh_token(user_id: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expire = datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     payload = {
         "sub": user_id,
         "exp": expire,
@@ -60,14 +60,14 @@ def create_refresh_token(user_id: str) -> str:
 
 def verify_token(token: str, expected_type: str | None = None) -> dict:
     """Verify and decode a JWT token.
-    
+
     Args:
         token: The JWT token string.
         expected_type: If set, validates the 'type' claim matches.
-    
+
     Returns:
         The decoded payload dict.
-    
+
     Raises:
         TokenExpiredError: Token has expired.
         InvalidTokenError: Token is invalid/malformed.
@@ -96,7 +96,7 @@ def get_token_ttl_seconds(token: str) -> int:
             options={"verify_exp": False},
         )
         exp = payload.get("exp", 0)
-        remaining = int(exp - datetime.now(timezone.utc).timestamp())
+        remaining = int(exp - datetime.now(UTC).timestamp())
         return max(remaining, 0)
     except JWTError:
         return 0

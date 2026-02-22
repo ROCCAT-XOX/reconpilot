@@ -1,5 +1,7 @@
-import time
 import logging
+import time
+from datetime import UTC
+
 from app.tools.base import BaseToolWrapper, ToolCategory, ToolResult, ToolStatus
 
 logger = logging.getLogger(__name__)
@@ -49,12 +51,11 @@ class SSLyzeWrapper(BaseToolWrapper):
 
         try:
             from sslyze import (
-                Scanner,
-                ServerScanRequest,
-                ServerNetworkLocation,
                 ScanCommand,
+                Scanner,
+                ServerNetworkLocation,
+                ServerScanRequest,
             )
-            from sslyze.errors import ServerHostnameCouldNotBeResolved
 
             if ":" in target:
                 host, port_str = target.rsplit(":", 1)
@@ -137,8 +138,8 @@ class SSLyzeWrapper(BaseToolWrapper):
                         leaf_cert = deployment.received_certificate_chain[0]
                         not_after = leaf_cert.not_valid_after_utc
 
-                        from datetime import datetime, timezone
-                        days_until_expiry = (not_after - datetime.now(timezone.utc)).days
+                        from datetime import datetime
+                        days_until_expiry = (not_after - datetime.now(UTC)).days
 
                         if days_until_expiry < 0:
                             result.findings.append({

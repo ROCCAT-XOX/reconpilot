@@ -1,6 +1,6 @@
-from dataclasses import dataclass
-from typing import Callable
 import logging
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from app.tools.base import ToolResult
 

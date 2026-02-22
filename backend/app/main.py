@@ -1,6 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,8 +18,9 @@ async def lifespan(app: FastAPI):
     # Startup health checks
     # Database check
     try:
-        from app.core.database import engine
         from sqlalchemy import text
+
+        from app.core.database import engine
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         logger.info("✅ Database connection OK")
@@ -85,7 +86,7 @@ async def health_check():
         "status": "healthy",
         "version": settings.APP_VERSION,
         "environment": settings.ENVIRONMENT,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 

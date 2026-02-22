@@ -1,11 +1,11 @@
+import asyncio
+import logging
+import subprocess
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
-import asyncio
-import subprocess
-import logging
-import time
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +126,7 @@ class BaseToolWrapper(ABC):
 
             return result
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return ToolResult(
                 tool_name=self.name,
                 target=target,
