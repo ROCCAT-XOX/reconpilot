@@ -45,9 +45,12 @@ def _extract_user_id(request: Request) -> str | None:
     auth = request.headers.get("authorization", "")
     if auth.startswith("Bearer "):
         token = auth[7:]
-        payload = verify_token(token)
-        if payload:
-            return payload.get("sub")
+        try:
+            payload = verify_token(token)
+            if payload:
+                return payload.get("sub")
+        except Exception:
+            return None
     return None
 
 

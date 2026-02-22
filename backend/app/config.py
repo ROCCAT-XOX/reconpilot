@@ -35,7 +35,6 @@ class Settings(BaseSettings):
         "http://localhost:5173",
         "http://localhost:8080",
         "http://10.100.110.50:30811",
-        "*",
     ]
 
     # Tool API Keys

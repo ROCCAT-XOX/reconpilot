@@ -42,7 +42,7 @@ PGPASSWORD="$DB_PASS" pg_dump \
     -d "$DB_NAME" \
     --no-owner \
     --no-privileges \
-    --format=custom \
+    --format=plain \
     | gzip > "$BACKUP_FILE"
 
 BACKUP_SIZE=$(du -h "$BACKUP_FILE" | cut -f1)

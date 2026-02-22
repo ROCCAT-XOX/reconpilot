@@ -17,7 +17,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential libffi-dev libssl-dev \
     && rm -rf /var/lib/apt/lists/*
-COPY backend/pyproject.toml ./
+COPY backend/ ./
 RUN pip install --no-cache-dir --prefix=/install .
 
 # --- Stage 3: Production Image ---

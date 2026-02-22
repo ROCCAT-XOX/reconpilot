@@ -65,10 +65,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS
+# CORS — allow all origins only in non-production environments
+cors_origins = settings.BACKEND_CORS_ORIGINS
+if settings.ENVIRONMENT != "production" and "*" not in cors_origins:
+    cors_origins = ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],

@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Seed the database with an initial admin user."""
+"""Seed the database with an initial admin user.
+
+⚠️  DEV/SETUP ONLY — Do not run in production without changing the password.
+Override the default password via the SEED_ADMIN_PASSWORD environment variable.
+"""
 import asyncio
 import sys
 import os
@@ -30,9 +34,10 @@ async def seed():
             print("Admin user already exists, skipping.")
             return
 
+        password = os.environ.get("SEED_ADMIN_PASSWORD", "ReconForge2026!")
         admin = User(
             email="admin@reconforge.local",
-            hashed_password=hash_password("ReconForge2026!"),
+            hashed_password=hash_password(password),
             full_name="System Administrator",
             role="admin",
             is_active=True,
@@ -40,8 +45,8 @@ async def seed():
         session.add(admin)
         await session.commit()
         print(f"Created admin user: admin@reconforge.local (ID: {admin.id})")
-        print("Password: ReconForge2026!")
-        print("\n⚠️  Change this password immediately in production!")
+        print(f"Password: {password}")
+        print("\n⚠️  DEV ONLY — Change this password immediately in production!")
 
 
 if __name__ == "__main__":

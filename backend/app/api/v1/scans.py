@@ -154,7 +154,7 @@ async def create_scan(project_id: str, data: ScanCreate, db: DB, current_user: P
     scope_result = await db.execute(
         select(ScopeTarget).where(
             ScopeTarget.project_id == project_id,
-            not ScopeTarget.is_excluded,
+            ScopeTarget.is_excluded == False,
         )
     )
     scope_targets_list = [st.target_value for st in scope_result.scalars().all()]

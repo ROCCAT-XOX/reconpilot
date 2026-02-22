@@ -129,7 +129,7 @@ async def list_project_findings(
     if source_tool:
         base_query = base_query.where(Finding.source_tool == source_tool)
     if not include_duplicates:
-        base_query = base_query.where(not Finding.is_duplicate)
+        base_query = base_query.where(Finding.is_duplicate == False)
 
     # Count
     count_result = await db.execute(
@@ -161,7 +161,7 @@ async def get_finding_stats(project_id: str, db: DB, current_user: CurrentUser):
     findings_result = await db.execute(
         select(Finding).where(
             Finding.project_id == project_id,
-            not Finding.is_duplicate,
+            Finding.is_duplicate == False,
         )
     )
     findings = findings_result.scalars().all()
@@ -192,12 +192,12 @@ async def compare_scans(
 ):
     """Compare findings between two scans."""
     result_a = await db.execute(
-        select(Finding).where(Finding.scan_id == data.scan_a_id, not Finding.is_duplicate)
+        select(Finding).where(Finding.scan_id == data.scan_a_id, Finding.is_duplicate == False)
     )
     findings_a = {f.fingerprint: f for f in result_a.scalars().all() if f.fingerprint}
 
     result_b = await db.execute(
-        select(Finding).where(Finding.scan_id == data.scan_b_id, not Finding.is_duplicate)
+        select(Finding).where(Finding.scan_id == data.scan_b_id, Finding.is_duplicate == False)
     )
     findings_b = {f.fingerprint: f for f in result_b.scalars().all() if f.fingerprint}
 
