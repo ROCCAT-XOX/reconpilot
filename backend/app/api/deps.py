@@ -51,13 +51,18 @@ async def get_current_user(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
     try:
-        # Check blacklist
-        if await is_token_blacklisted(token):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has been revoked",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+        # Check blacklist (fail-open if Redis is down)
+        try:
+            if await is_token_blacklisted(token):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token has been revoked",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            pass  # Redis down — fail open
         payload = verify_token(token, expected_type="access")
     except TokenExpiredError:
         raise HTTPException(

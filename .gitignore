@@ -53,3 +53,5 @@ backend/alembic/versions/__pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+test.db
+pytest_test.db

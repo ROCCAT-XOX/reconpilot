@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuthStore } from '../store/authStore'
 
 export default function Login() {
   const navigate = useNavigate()
+  const setToken = useAuthStore((s) => s.setToken)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -32,6 +34,7 @@ export default function Login() {
       const data = await res.json()
       localStorage.setItem('access_token', data.access_token)
       localStorage.setItem('refresh_token', data.refresh_token)
+      setToken(data.access_token)
       navigate('/dashboard')
     } catch (err: any) {
       setError(err.message)

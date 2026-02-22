@@ -1,8 +1,15 @@
 import apiClient from './client'
 import type { Project, ProjectMember, ScopeTarget } from '../types/project'
 
+interface PaginatedResponse<T> {
+  items: T[]
+  total: number
+  page: number
+  per_page: number
+}
+
 export const projectsApi = {
-  list: () => apiClient.get<Project[]>('/projects').then(r => r.data),
+  list: () => apiClient.get<PaginatedResponse<Project>>('/projects', { params: { per_page: 100 } }).then(r => r.data.items),
   get: (id: string) => apiClient.get<Project>(`/projects/${id}`).then(r => r.data),
   create: (data: { name: string; client_name: string; description?: string }) =>
     apiClient.post<Project>('/projects', data).then(r => r.data),

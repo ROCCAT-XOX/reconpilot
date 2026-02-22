@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { findingsApi } from '../api/findings'
 import FindingCard from '../components/findings/FindingCard'
@@ -8,11 +8,13 @@ import SeverityChart from '../components/findings/SeverityChart'
 import type { Finding } from '../types/finding'
 
 export default function Findings() {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const { projectId: routeProjectId } = useParams<{ projectId: string }>()
   const [severity, setSeverity] = useState('')
   const [status, setStatus] = useState('')
   const [tool, setTool] = useState('')
-  const projectId = searchParams.get('project') || undefined
+  const projectId = routeProjectId || searchParams.get('project') || undefined
 
   const { data: findings = [], isLoading } = useQuery({
     queryKey: ['findings', projectId, severity, status, tool],
@@ -83,7 +85,7 @@ export default function Findings() {
           ) : findings.length === 0 ? (
             <div className="bg-dark-900 rounded-xl border border-dark-700 p-12 text-center text-gray-500">No findings found.</div>
           ) : (
-            findings.map((f: Finding) => <FindingCard key={f.id} finding={f} />)
+            findings.map((f: Finding) => <FindingCard key={f.id} finding={f} onClick={() => navigate(`/findings/${f.id}`)} />)
           )}
         </div>
       </div>

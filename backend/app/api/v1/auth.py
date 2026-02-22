@@ -75,12 +75,17 @@ async def login_json(data: LoginRequest, db: DB):
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(data: RefreshRequest, db: DB):
-    # Check if token is blacklisted
-    if await is_token_blacklisted(data.refresh_token):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has been revoked",
-        )
+    # Check if token is blacklisted (fail-open if Redis down)
+    try:
+        if await is_token_blacklisted(data.refresh_token):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        pass
 
     try:
         payload = verify_token(data.refresh_token, expected_type="refresh")
@@ -105,10 +110,13 @@ async def refresh_token(data: RefreshRequest, db: DB):
             detail="User not found or inactive",
         )
 
-    # Blacklist old refresh token (rotation)
-    ttl = get_token_ttl_seconds(data.refresh_token)
-    if ttl > 0:
-        await blacklist_token(data.refresh_token, ttl)
+    # Blacklist old refresh token (rotation) — best effort
+    try:
+        ttl = get_token_ttl_seconds(data.refresh_token)
+        if ttl > 0:
+            await blacklist_token(data.refresh_token, ttl)
+    except Exception:
+        pass
 
     return TokenResponse(
         access_token=create_access_token(str(user.id), user.role),
@@ -122,9 +130,12 @@ async def logout(
     token: str = Depends(oauth2_scheme),
 ):
     """Logout: blacklist the current access token."""
-    ttl = get_token_ttl_seconds(token)
-    if ttl > 0:
-        await blacklist_token(token, ttl)
+    try:
+        ttl = get_token_ttl_seconds(token)
+        if ttl > 0:
+            await blacklist_token(token, ttl)
+    except Exception:
+        pass
     return {"detail": "Successfully logged out"}
 
 

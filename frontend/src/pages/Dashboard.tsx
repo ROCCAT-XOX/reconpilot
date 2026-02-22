@@ -9,7 +9,7 @@ export default function Dashboard() {
 
   const { data: projects } = useQuery({
     queryKey: ['projects'],
-    queryFn: () => apiClient.get('/projects').then(r => r.data),
+    queryFn: () => apiClient.get('/projects', { params: { per_page: 100 } }).then(r => r.data.items),
   })
 
   const projectCount = projects?.length || 0

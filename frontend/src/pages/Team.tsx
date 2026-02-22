@@ -13,7 +13,7 @@ export default function Team() {
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['users'],
-    queryFn: () => apiClient.get<User[]>('/users').then(r => r.data),
+    queryFn: () => apiClient.get('/users', { params: { per_page: 100 } }).then(r => r.data.items as User[]),
   })
 
   const createMutation = useMutation({

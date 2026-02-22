@@ -2,10 +2,10 @@ import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, ForeignKey, Index, String
-from sqlalchemy.dialects.postgresql import INET, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+from app.core.types import GUID, INET, JSON
 
 
 class AuditLog(Base):
@@ -16,15 +16,15 @@ class AuditLog(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        GUID, primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+        GUID, ForeignKey("users.id"), nullable=True
     )
     action: Mapped[str] = mapped_column(String(50), nullable=False)
     resource_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    resource_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
-    details: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    resource_id: Mapped[uuid.UUID | None] = mapped_column(GUID, nullable=True)
+    details: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     ip_address: Mapped[str | None] = mapped_column(INET, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)

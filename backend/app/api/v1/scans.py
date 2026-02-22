@@ -173,11 +173,24 @@ async def create_scan(project_id: str, data: ScanCreate, db: DB, current_user: P
     db.add(scan)
     await db.flush()
 
+    # Try to dispatch to Celery worker (best-effort, skip if Redis unavailable)
     try:
-        from workers.tasks.scan_tasks import execute_scan_task
-        execute_scan_task.delay(
-            str(scan.id), data.profile, targets, scope_targets_list, data.config
-        )
+        import socket
+        from urllib.parse import urlparse
+
+        from app.config import settings
+        parsed = urlparse(settings.REDIS_URL)
+        host = parsed.hostname or "localhost"
+        port = parsed.port or 6379
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(0.5)
+        result = sock.connect_ex((host, port))
+        sock.close()
+        if result == 0:
+            from workers.tasks.scan_tasks import execute_scan_task
+            execute_scan_task.delay(
+                str(scan.id), data.profile, targets, scope_targets_list, data.config
+            )
     except Exception:
         pass
 

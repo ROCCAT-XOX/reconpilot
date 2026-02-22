@@ -6,10 +6,10 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.core.types import GUID, JSON
 
 if TYPE_CHECKING:
     from app.models.project import Project
@@ -25,16 +25,16 @@ class Finding(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        GUID, primary_key=True, default=uuid.uuid4
     )
     scan_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("scans.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("scans.id", ondelete="CASCADE"), nullable=False
     )
     scan_job_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("scan_jobs.id", ondelete="SET NULL"), nullable=True
+        GUID, ForeignKey("scan_jobs.id", ondelete="SET NULL"), nullable=True
     )
     project_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
 
     # Classification
@@ -55,15 +55,15 @@ class Finding(Base):
 
     # Tool info
     source_tool: Mapped[str] = mapped_column(String(50), nullable=False)
-    raw_evidence: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    raw_evidence: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # Workflow
     status: Mapped[str] = mapped_column(String(20), default="open")
     assigned_to: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+        GUID, ForeignKey("users.id"), nullable=True
     )
     verified_by: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+        GUID, ForeignKey("users.id"), nullable=True
     )
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -71,7 +71,7 @@ class Finding(Base):
     fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
     is_duplicate: Mapped[bool] = mapped_column(Boolean, default=False)
     duplicate_of: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("findings.id"), nullable=True
+        GUID, ForeignKey("findings.id"), nullable=True
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -95,13 +95,13 @@ class FindingComment(Base):
     __tablename__ = "finding_comments"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        GUID, primary_key=True, default=uuid.uuid4
     )
     finding_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("findings.id", ondelete="CASCADE"), nullable=False
+        GUID, ForeignKey("findings.id", ondelete="CASCADE"), nullable=False
     )
     user_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+        GUID, ForeignKey("users.id"), nullable=True
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

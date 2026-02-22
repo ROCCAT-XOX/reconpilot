@@ -19,6 +19,48 @@ from app.schemas.finding import (
 router = APIRouter()
 
 
+@router.get("/", response_model=PaginatedResponse[FindingResponse])
+async def list_all_findings(
+    db: DB,
+    current_user: CurrentUser,
+    pagination: Pagination,
+    severity: str | None = Query(None),
+    status: str | None = Query(None),
+    source_tool: str | None = Query(None),
+    include_duplicates: bool = Query(False),
+):
+    """List all findings (across all projects the user can see)."""
+    base_query = select(Finding)
+
+    if severity:
+        base_query = base_query.where(Finding.severity == severity)
+    if status:
+        base_query = base_query.where(Finding.status == status)
+    if source_tool:
+        base_query = base_query.where(Finding.source_tool == source_tool)
+    if not include_duplicates:
+        base_query = base_query.where(Finding.is_duplicate == False)  # noqa: E712
+
+    count_result = await db.execute(
+        select(func.count()).select_from(base_query.subquery())
+    )
+    total = count_result.scalar()
+
+    result = await db.execute(
+        base_query.order_by(Finding.created_at.desc())
+        .offset(pagination.offset)
+        .limit(pagination.per_page)
+    )
+    findings = result.scalars().all()
+
+    return PaginatedResponse(
+        items=[FindingResponse.model_validate(f) for f in findings],
+        total=total,
+        page=pagination.page,
+        per_page=pagination.per_page,
+    )
+
+
 @router.get("/{finding_id}", response_model=FindingResponse)
 async def get_finding(finding_id: str, db: DB, current_user: CurrentUser):
     result = await db.execute(select(Finding).where(Finding.id == finding_id))
