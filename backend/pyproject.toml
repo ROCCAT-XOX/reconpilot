@@ -55,8 +55,8 @@ select = ["E", "F", "I", "N", "W", "S", "B", "UP", "SIM"]
 "app/tools/recon/*.py" = ["S603", "S607"]
 "app/tools/exploitation/*.py" = ["S603", "S607"]
 "app/tools/web_analysis/*.py" = ["S603", "S607"]
-"app/api/deps.py" = ["B008", "UP046", "B904", "E712"]  # Depends(), Generic, raise from, SQLAlchemy == False
-"app/api/v1/*.py" = ["B008", "B904", "E712", "E501"]  # Depends(), raise from, SQLAlchemy == False
+"app/api/deps.py" = ["B008", "UP046", "B904", "E712", "S110"]  # Depends(), Generic, raise from, SQLAlchemy == False, Redis fail-open
+"app/api/v1/*.py" = ["B008", "B904", "E712", "E501", "S110"]  # Depends(), raise from, SQLAlchemy == False, Redis fail-open
 "app/api/middleware/*.py" = ["B904", "S110", "E501"]
 "app/core/security.py" = ["B904", "W293"]
 "app/schemas/user.py" = ["S105"]  # token_type field name
