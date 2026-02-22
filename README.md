@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.png" alt="ReconForge Logo" width="300">
+</p>
+
 # ReconForge
 
 **Reconnaissance Orchestration Platform** for pentesting teams.
