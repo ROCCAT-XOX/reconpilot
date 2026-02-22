@@ -44,9 +44,10 @@ COPY --from=frontend-build /app/frontend/dist /usr/share/nginx/html
 RUN rm /etc/nginx/sites-enabled/default
 COPY nginx/nginx-docker.conf /etc/nginx/conf.d/default.conf
 
-# Startup script
+# Scripts (entrypoint, seed, backup)
+COPY scripts/ /app/scripts/
 COPY scripts/docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh /app/scripts/*.sh
 
 # Data directories
 RUN mkdir -p /app/data/reports /app/data/scans /app/data/uploads
