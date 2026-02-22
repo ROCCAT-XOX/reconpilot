@@ -3,10 +3,6 @@ import type { Finding, FindingComment, FindingStats } from '../types/finding'
 
 export const findingsApi = {
   get: (id: string) => apiClient.get<Finding>(`/findings/${id}`).then(r => r.data),
-  list: (params?: { severity?: string; status?: string; source_tool?: string }) =>
-    apiClient.get<Finding[]>('/findings', { params }).then(r => r.data),
-  updateStatus: (id: string, status: string) =>
-    apiClient.patch<Finding>(`/findings/${id}`, { status }).then(r => r.data),
   update: (id: string, data: Partial<Finding>) =>
     apiClient.put<Finding>(`/findings/${id}`, data).then(r => r.data),
   verify: (id: string) => apiClient.put(`/findings/${id}/verify`).then(r => r.data),

@@ -57,16 +57,16 @@ export default function FindingDetail({ finding, onClose }: Props) {
           {/* Affected Asset */}
           <section className="grid grid-cols-2 gap-4">
             <div>
-              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Target Host</h3>
-              <p className="text-gray-200 text-sm font-mono">{finding.target_host ?? '—'}</p>
+              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Affected Host</h3>
+              <p className="text-gray-200 text-sm font-mono">{finding.affected_host ?? '—'}</p>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Target URL</h3>
-              <p className="text-gray-200 text-sm font-mono break-all">{finding.target_url ?? '—'}</p>
+              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Affected URL</h3>
+              <p className="text-gray-200 text-sm font-mono break-all">{finding.affected_url ?? '—'}</p>
             </div>
             <div>
               <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Port</h3>
-              <p className="text-gray-200 text-sm font-mono">{finding.target_port ?? '—'}</p>
+              <p className="text-gray-200 text-sm font-mono">{finding.port ?? '—'}</p>
             </div>
             <div>
               <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Discovered</h3>
@@ -75,30 +75,20 @@ export default function FindingDetail({ finding, onClose }: Props) {
           </section>
 
           {/* Evidence */}
-          {finding.raw_evidence && (
+          {finding.evidence && (
             <section>
               <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Evidence</h3>
               <pre className="bg-dark-950 border border-dark-700 rounded-lg p-4 text-xs text-green-400 overflow-x-auto font-mono">
-                {JSON.stringify(finding.raw_evidence, null, 2)}
+                {finding.evidence}
               </pre>
             </section>
           )}
 
-          {/* CVE / CWE */}
-          {(finding.cve_id || finding.cwe_id) && (
-            <section className="flex gap-4">
-              {finding.cve_id && (
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">CVE</h3>
-                  <p className="text-orange-400 text-sm font-mono">{finding.cve_id}</p>
-                </div>
-              )}
-              {finding.cwe_id && (
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">CWE</h3>
-                  <p className="text-orange-400 text-sm font-mono">{finding.cwe_id}</p>
-                </div>
-              )}
+          {/* Remediation */}
+          {finding.remediation && (
+            <section>
+              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Remediation</h3>
+              <p className="text-gray-300 text-sm leading-relaxed">{finding.remediation}</p>
             </section>
           )}
 

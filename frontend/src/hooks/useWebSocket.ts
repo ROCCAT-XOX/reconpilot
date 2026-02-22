@@ -33,7 +33,5 @@ export function useWebSocket(projectId: string | undefined) {
     return clientRef.current?.on(event, handler)
   }, [])
 
-  const lastEvent = events.length > 0 ? events[events.length - 1] : null
-
-  return { events, lastEvent, connected, subscribe, onEvent }
+  return { events, connected, subscribe, onEvent }
 }
