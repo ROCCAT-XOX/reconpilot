@@ -11,7 +11,7 @@ interface PaginatedResponse<T> {
 export const findingsApi = {
   get: (id: string) => apiClient.get<Finding>(`/findings/${id}`).then(r => r.data),
   list: (params?: { severity?: string; status?: string; source_tool?: string }) =>
-    apiClient.get<PaginatedResponse<Finding>>('/findings', { params: { ...params, per_page: 100 } }).then(r => r.data.items),
+    apiClient.get<PaginatedResponse<Finding>>('/findings/', { params: { ...params, per_page: 100 } }).then(r => r.data.items),
   update: (id: string, data: Partial<Finding>) =>
     apiClient.put<Finding>(`/findings/${id}`, data).then(r => r.data),
   verify: (id: string) => apiClient.put(`/findings/${id}/verify`).then(r => r.data),

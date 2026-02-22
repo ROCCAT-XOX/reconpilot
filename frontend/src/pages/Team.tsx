@@ -13,11 +13,11 @@ export default function Team() {
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['users'],
-    queryFn: () => apiClient.get('/users', { params: { per_page: 100 } }).then(r => r.data.items as User[]),
+    queryFn: () => apiClient.get('/users/', { params: { per_page: 100 } }).then(r => r.data.items as User[]),
   })
 
   const createMutation = useMutation({
-    mutationFn: (data: typeof form) => apiClient.post('/users', data),
+    mutationFn: (data: typeof form) => apiClient.post('/users/', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       setShowCreate(false)

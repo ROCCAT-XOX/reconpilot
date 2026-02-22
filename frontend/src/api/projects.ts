@@ -9,10 +9,10 @@ interface PaginatedResponse<T> {
 }
 
 export const projectsApi = {
-  list: () => apiClient.get<PaginatedResponse<Project>>('/projects', { params: { per_page: 100 } }).then(r => r.data.items),
+  list: () => apiClient.get<PaginatedResponse<Project>>('/projects/', { params: { per_page: 100 } }).then(r => r.data.items),
   get: (id: string) => apiClient.get<Project>(`/projects/${id}`).then(r => r.data),
   create: (data: { name: string; client_name: string; description?: string }) =>
-    apiClient.post<Project>('/projects', data).then(r => r.data),
+    apiClient.post<Project>('/projects/', data).then(r => r.data),
   update: (id: string, data: Partial<Project>) =>
     apiClient.put<Project>(`/projects/${id}`, data).then(r => r.data),
   delete: (id: string) => apiClient.delete(`/projects/${id}`).then(r => r.data),

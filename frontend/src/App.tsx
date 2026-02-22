@@ -7,6 +7,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Projects from './pages/Projects'
 import ProjectDetail from './pages/ProjectDetail'
+import Scans from './pages/Scans'
 import ScanView from './pages/ScanView'
 import Findings from './pages/Findings'
 import FindingDetail from './pages/FindingDetail'
@@ -26,6 +27,7 @@ function App() {
             <Route path="projects" element={<Projects />} />
             <Route path="projects/:id" element={<ProjectDetail />} />
             <Route path="projects/:projectId/findings" element={<Findings />} />
+            <Route path="scans" element={<Scans />} />
             <Route path="scans/:id" element={<ScanView />} />
             <Route path="findings" element={<Findings />} />
             <Route path="findings/:id" element={<FindingDetail />} />
