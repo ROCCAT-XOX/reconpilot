@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 
 
 class UserCreate(BaseModel):
@@ -16,6 +16,8 @@ class UserUpdate(BaseModel):
 
 
 class UserResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
     id: str
     email: str
     full_name: str
@@ -23,6 +25,23 @@ class UserResponse(BaseModel):
     is_active: bool
     created_at: str
     updated_at: str
+
+    @classmethod
+    def model_validate(cls, obj, **kwargs):
+        """Support ORM objects by converting UUID/datetime fields."""
+        if hasattr(obj, "__table__"):
+            from dataclasses import dataclass
+            data = {
+                "id": str(obj.id),
+                "email": obj.email,
+                "full_name": obj.full_name,
+                "role": obj.role,
+                "is_active": obj.is_active,
+                "created_at": obj.created_at.isoformat() if obj.created_at else "",
+                "updated_at": obj.updated_at.isoformat() if obj.updated_at else "",
+            }
+            return cls(**data)
+        return super().model_validate(obj, **kwargs)
 
 
 class LoginRequest(BaseModel):

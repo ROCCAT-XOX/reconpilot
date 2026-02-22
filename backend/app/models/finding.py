@@ -1,12 +1,19 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.project import Project
+    from app.models.scan import Scan
 
 
 class Finding(Base):
@@ -77,9 +84,9 @@ class Finding(Base):
     )
 
     # Relationships
-    project: Mapped["Project"] = relationship(back_populates="findings")
-    scan: Mapped["Scan"] = relationship(back_populates="findings")
-    comments: Mapped[list["FindingComment"]] = relationship(
+    project: Mapped[Project] = relationship(back_populates="findings")
+    scan: Mapped[Scan] = relationship(back_populates="findings")
+    comments: Mapped[list[FindingComment]] = relationship(
         back_populates="finding", cascade="all, delete-orphan"
     )
 
@@ -102,8 +109,4 @@ class FindingComment(Base):
     )
 
     # Relationships
-    finding: Mapped["Finding"] = relationship(back_populates="comments")
-
-
-from app.models.project import Project  # noqa: E402
-from app.models.scan import Scan  # noqa: E402
+    finding: Mapped[Finding] = relationship(back_populates="comments")

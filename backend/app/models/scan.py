@@ -1,11 +1,18 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.project import Project
+    from app.models.finding import Finding
 
 
 class Scan(Base):
@@ -31,11 +38,11 @@ class Scan(Base):
     )
 
     # Relationships
-    project: Mapped["Project"] = relationship(back_populates="scans")
-    jobs: Mapped[list["ScanJob"]] = relationship(
+    project: Mapped[Project] = relationship(back_populates="scans")
+    jobs: Mapped[list[ScanJob]] = relationship(
         back_populates="scan", cascade="all, delete-orphan"
     )
-    findings: Mapped[list["Finding"]] = relationship(
+    findings: Mapped[list[Finding]] = relationship(
         back_populates="scan", cascade="all, delete-orphan"
     )
 
@@ -68,8 +75,4 @@ class ScanJob(Base):
     )
 
     # Relationships
-    scan: Mapped["Scan"] = relationship(back_populates="jobs")
-
-
-from app.models.project import Project  # noqa: E402
-from app.models.finding import Finding  # noqa: E402
+    scan: Mapped[Scan] = relationship(back_populates="jobs")

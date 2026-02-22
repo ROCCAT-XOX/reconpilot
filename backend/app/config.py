@@ -1,26 +1,30 @@
+import logging
+
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
     # App
     APP_NAME: str = "ReconForge"
     APP_VERSION: str = "0.1.0"
-    ENVIRONMENT: str = "development"
+    ENVIRONMENT: str = "development"  # Only this has a default
     DEBUG: bool = False
 
     # API
     API_V1_PREFIX: str = "/api/v1"
 
-    # Database
-    DATABASE_URL: str = "postgresql+asyncpg://reconforge:devpassword@localhost:5432/reconforge"
+    # Database — REQUIRED, no default. App fails at startup if missing.
+    DATABASE_URL: str
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    # Security
-    SECRET_KEY: str = "dev-secret-key-change-in-production"
+    # Security — REQUIRED, no default. App fails at startup if missing.
+    SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     ALGORITHM: str = "HS256"

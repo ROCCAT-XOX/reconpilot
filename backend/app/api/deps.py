@@ -1,13 +1,20 @@
-from typing import Annotated
-from functools import wraps
+from typing import Annotated, Generic, TypeVar
+from dataclasses import dataclass
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import verify_token
+from app.core.security import (
+    verify_token,
+    TokenExpiredError,
+    InvalidTokenError,
+    WrongTokenTypeError,
+)
+from app.core.redis import is_token_blacklisted
 from app.models.user import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -43,8 +50,22 @@ async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
-    payload = verify_token(token)
-    if payload is None or payload.get("type") != "access":
+    try:
+        # Check blacklist
+        if await is_token_blacklisted(token):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        payload = verify_token(token, expected_type="access")
+    except TokenExpiredError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except (InvalidTokenError, WrongTokenTypeError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
@@ -98,6 +119,37 @@ async def require_admin(
     return current_user
 
 
+# --- Pagination ---
+
+@dataclass
+class PaginationParams:
+    page: int
+    per_page: int
+    offset: int
+
+
+def get_pagination(
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(20, ge=1, le=100, description="Items per page"),
+) -> PaginationParams:
+    return PaginationParams(
+        page=page,
+        per_page=per_page,
+        offset=(page - 1) * per_page,
+    )
+
+
+T = TypeVar("T")
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    items: list[T]
+    total: int
+    page: int
+    per_page: int
+
+
+Pagination = Annotated[PaginationParams, Depends(get_pagination)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
 AdminUser = Annotated[User, Depends(require_admin)]
 DB = Annotated[AsyncSession, Depends(get_db)]

@@ -1,9 +1,8 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import select, func, and_
-from sqlalchemy.orm import selectinload
+from sqlalchemy import select, func
 
-from app.api.deps import CurrentUser, DB, PentesterOrAbove
+from app.api.deps import CurrentUser, DB, PentesterOrAbove, Pagination, PaginatedResponse
 from app.models.finding import Finding, FindingComment
 from app.models.report import ScanComparison
 from app.schemas.finding import (
@@ -15,42 +14,13 @@ from app.services.finding_service import compute_finding_fingerprint
 router = APIRouter()
 
 
-def _finding_to_response(f: Finding) -> FindingResponse:
-    return FindingResponse(
-        id=str(f.id),
-        scan_id=str(f.scan_id),
-        project_id=str(f.project_id),
-        title=f.title,
-        description=f.description,
-        severity=f.severity,
-        cvss_score=float(f.cvss_score) if f.cvss_score else None,
-        cve_id=f.cve_id,
-        cwe_id=f.cwe_id,
-        target_host=f.target_host,
-        target_port=f.target_port,
-        target_protocol=f.target_protocol,
-        target_url=f.target_url,
-        target_service=f.target_service,
-        source_tool=f.source_tool,
-        raw_evidence=f.raw_evidence,
-        status=f.status,
-        assigned_to=str(f.assigned_to) if f.assigned_to else None,
-        verified_by=str(f.verified_by) if f.verified_by else None,
-        verified_at=f.verified_at.isoformat() if f.verified_at else None,
-        fingerprint=f.fingerprint,
-        is_duplicate=f.is_duplicate,
-        created_at=f.created_at.isoformat(),
-        updated_at=f.updated_at.isoformat(),
-    )
-
-
 @router.get("/{finding_id}", response_model=FindingResponse)
 async def get_finding(finding_id: str, db: DB, current_user: CurrentUser):
     result = await db.execute(select(Finding).where(Finding.id == finding_id))
     finding = result.scalar_one_or_none()
     if not finding:
         raise HTTPException(status_code=404, detail="Finding not found")
-    return _finding_to_response(finding)
+    return FindingResponse.model_validate(finding)
 
 
 @router.put("/{finding_id}", response_model=FindingResponse)
@@ -68,7 +38,7 @@ async def update_finding(finding_id: str, data: FindingUpdate, db: DB, current_u
         finding.description = data.description
 
     await db.flush()
-    return _finding_to_response(finding)
+    return FindingResponse.model_validate(finding)
 
 
 @router.put("/{finding_id}/verify")
@@ -109,7 +79,6 @@ async def list_comments(finding_id: str, db: DB, current_user: CurrentUser):
 
 @router.post("/{finding_id}/comments", response_model=CommentResponse, status_code=201)
 async def add_comment(finding_id: str, data: CommentCreate, db: DB, current_user: PentesterOrAbove):
-    # Verify finding exists
     finding_result = await db.execute(select(Finding).where(Finding.id == finding_id))
     if not finding_result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Finding not found")
@@ -132,48 +101,54 @@ async def add_comment(finding_id: str, data: CommentCreate, db: DB, current_user
 
 # --- Project-scoped finding endpoints ---
 
-from fastapi import APIRouter as _APIRouter
-
-project_findings_router = _APIRouter()
+project_findings_router = APIRouter()
 
 
-@project_findings_router.get("/{project_id}/findings", response_model=list[FindingResponse])
+@project_findings_router.get("/{project_id}/findings", response_model=PaginatedResponse[FindingResponse])
 async def list_project_findings(
     project_id: str,
     db: DB,
     current_user: CurrentUser,
+    pagination: Pagination,
     severity: str | None = Query(None),
     status: str | None = Query(None),
     source_tool: str | None = Query(None),
     include_duplicates: bool = Query(False),
 ):
-    query = select(Finding).where(Finding.project_id == project_id)
+    base_query = select(Finding).where(Finding.project_id == project_id)
 
     if severity:
-        query = query.where(Finding.severity == severity)
+        base_query = base_query.where(Finding.severity == severity)
     if status:
-        query = query.where(Finding.status == status)
+        base_query = base_query.where(Finding.status == status)
     if source_tool:
-        query = query.where(Finding.source_tool == source_tool)
+        base_query = base_query.where(Finding.source_tool == source_tool)
     if not include_duplicates:
-        query = query.where(Finding.is_duplicate == False)
+        base_query = base_query.where(Finding.is_duplicate == False)
 
-    query = query.order_by(
-        # Order by severity: critical, high, medium, low, info
-        func.array_position(
-            func.cast(["critical", "high", "medium", "low", "info"], type_=None),
-            Finding.severity,
-        ) if False else Finding.created_at.desc()  # Fallback
+    # Count
+    count_result = await db.execute(
+        select(func.count()).select_from(base_query.subquery())
     )
+    total = count_result.scalar()
 
-    result = await db.execute(query)
+    result = await db.execute(
+        base_query.order_by(Finding.created_at.desc())
+        .offset(pagination.offset)
+        .limit(pagination.per_page)
+    )
     findings = result.scalars().all()
 
     # Sort by severity manually
     severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
     findings_sorted = sorted(findings, key=lambda f: severity_order.get(f.severity, 5))
 
-    return [_finding_to_response(f) for f in findings_sorted]
+    return PaginatedResponse(
+        items=[FindingResponse.model_validate(f) for f in findings_sorted],
+        total=total,
+        page=pagination.page,
+        per_page=pagination.per_page,
+    )
 
 
 @project_findings_router.get("/{project_id}/findings/stats", response_model=FindingStats)
@@ -211,13 +186,11 @@ async def compare_scans(
     current_user: CurrentUser,
 ):
     """Compare findings between two scans."""
-    # Get findings for scan A
     result_a = await db.execute(
         select(Finding).where(Finding.scan_id == data.scan_a_id, Finding.is_duplicate == False)
     )
     findings_a = {f.fingerprint: f for f in result_a.scalars().all() if f.fingerprint}
 
-    # Get findings for scan B
     result_b = await db.execute(
         select(Finding).where(Finding.scan_id == data.scan_b_id, Finding.is_duplicate == False)
     )
@@ -230,7 +203,6 @@ async def compare_scans(
     resolved_fps = fps_a - fps_b
     unchanged_fps = fps_a & fps_b
 
-    # Save comparison
     comparison = ScanComparison(
         project_id=project_id,
         scan_a_id=data.scan_a_id,

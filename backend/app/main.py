@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -9,12 +10,47 @@ from app.api.v1.router import api_router
 from app.api.v1.websocket import router as ws_router
 from app.config import settings
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
+    # Startup health checks
+    # Database check
+    try:
+        from app.core.database import engine
+        from sqlalchemy import text
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        logger.info("✅ Database connection OK")
+    except Exception as e:
+        logger.warning(f"⚠️  Database health check failed: {e}")
+
+    # Redis check
+    try:
+        from app.core.redis import get_redis
+        r = await get_redis()
+        await r.ping()
+        logger.info("✅ Redis connection OK")
+    except Exception as e:
+        logger.warning(f"⚠️  Redis health check failed: {e}")
+
     yield
-    # Shutdown
+
+    # Shutdown cleanup
+    try:
+        from app.core.redis import close_redis
+        await close_redis()
+        logger.info("Redis connection closed")
+    except Exception as e:
+        logger.warning(f"Redis cleanup error: {e}")
+
+    try:
+        from app.core.database import engine
+        await engine.dispose()
+        logger.info("Database engine disposed")
+    except Exception as e:
+        logger.warning(f"Database cleanup error: {e}")
 
 
 app = FastAPI(
@@ -31,8 +67,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.BACKEND_CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Audit logging

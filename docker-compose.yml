@@ -1,4 +1,6 @@
-version: "3.9"
+# Production Docker Compose
+# Root Dockerfile is used for production (k3s deployment).
+# For local development, use docker-compose.dev.yml instead.
 
 services:
   nginx:
@@ -33,6 +35,12 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   worker:
     build:
@@ -55,6 +63,12 @@ services:
     cap_add:
       - NET_RAW
       - NET_ADMIN
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A workers.celery_app inspect ping --timeout 10"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
 
   beat:
     build:

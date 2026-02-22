@@ -2,20 +2,22 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 
-from app.api.deps import DB, CurrentUser
+from app.api.deps import DB, CurrentUser, oauth2_scheme
+from app.core.redis import blacklist_token, is_token_blacklisted
 from app.core.security import (
     create_access_token,
     create_refresh_token,
+    get_token_ttl_seconds,
     verify_password,
     verify_token,
+    TokenExpiredError,
+    InvalidTokenError,
+    WrongTokenTypeError,
 )
 from app.models.user import User
 from app.schemas.user import LoginRequest, RefreshRequest, TokenResponse, UserResponse
 
 router = APIRouter()
-
-# In-memory token blacklist (use Redis in production)
-_blacklisted_tokens: set[str] = set()
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -73,14 +75,21 @@ async def login_json(data: LoginRequest, db: DB):
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(data: RefreshRequest, db: DB):
-    if data.refresh_token in _blacklisted_tokens:
+    # Check if token is blacklisted
+    if await is_token_blacklisted(data.refresh_token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has been revoked",
         )
 
-    payload = verify_token(data.refresh_token)
-    if payload is None or payload.get("type") != "refresh":
+    try:
+        payload = verify_token(data.refresh_token, expected_type="refresh")
+    except TokenExpiredError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token has expired",
+        )
+    except (InvalidTokenError, WrongTokenTypeError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token",
@@ -96,8 +105,10 @@ async def refresh_token(data: RefreshRequest, db: DB):
             detail="User not found or inactive",
         )
 
-    # Blacklist old refresh token
-    _blacklisted_tokens.add(data.refresh_token)
+    # Blacklist old refresh token (rotation)
+    ttl = get_token_ttl_seconds(data.refresh_token)
+    if ttl > 0:
+        await blacklist_token(data.refresh_token, ttl)
 
     return TokenResponse(
         access_token=create_access_token(str(user.id), user.role),
@@ -106,19 +117,17 @@ async def refresh_token(data: RefreshRequest, db: DB):
 
 
 @router.post("/logout")
-async def logout(current_user: CurrentUser):
-    """Logout the current user. In production, this would invalidate the token in Redis."""
+async def logout(
+    current_user: CurrentUser,
+    token: str = Depends(oauth2_scheme),
+):
+    """Logout: blacklist the current access token."""
+    ttl = get_token_ttl_seconds(token)
+    if ttl > 0:
+        await blacklist_token(token, ttl)
     return {"detail": "Successfully logged out"}
 
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: CurrentUser):
-    return UserResponse(
-        id=str(current_user.id),
-        email=current_user.email,
-        full_name=current_user.full_name,
-        role=current_user.role,
-        is_active=current_user.is_active,
-        created_at=current_user.created_at.isoformat(),
-        updated_at=current_user.updated_at.isoformat(),
-    )
+    return UserResponse.model_validate(current_user)

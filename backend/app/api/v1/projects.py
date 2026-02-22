@@ -1,9 +1,9 @@
 from datetime import date
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import CurrentUser, DB, LeadOrAdmin, PentesterOrAbove
+from app.api.deps import CurrentUser, DB, LeadOrAdmin, Pagination, PaginatedResponse
 from app.models.project import Project
 from app.models.user import ProjectMember, User
 from app.schemas.project import (
@@ -13,34 +13,36 @@ from app.schemas.project import (
 router = APIRouter()
 
 
-def _project_to_response(p: Project) -> ProjectResponse:
-    return ProjectResponse(
-        id=str(p.id),
-        name=p.name,
-        client_name=p.client_name,
-        description=p.description,
-        status=p.status,
-        start_date=p.start_date.isoformat() if p.start_date else None,
-        end_date=p.end_date.isoformat() if p.end_date else None,
-        created_by=str(p.created_by) if p.created_by else None,
-        created_at=p.created_at.isoformat(),
-        updated_at=p.updated_at.isoformat(),
-    )
-
-
-@router.get("/", response_model=list[ProjectResponse])
-async def list_projects(db: DB, current_user: CurrentUser):
+@router.get("/", response_model=PaginatedResponse[ProjectResponse])
+async def list_projects(db: DB, current_user: CurrentUser, pagination: Pagination):
     if current_user.role == "admin":
-        result = await db.execute(select(Project).order_by(Project.created_at.desc()))
+        base_query = select(Project)
     else:
-        result = await db.execute(
+        base_query = (
             select(Project)
             .join(ProjectMember, ProjectMember.project_id == Project.id)
             .where(ProjectMember.user_id == current_user.id)
-            .order_by(Project.created_at.desc())
         )
+
+    # Count
+    count_result = await db.execute(
+        select(func.count()).select_from(base_query.subquery())
+    )
+    total = count_result.scalar()
+
+    result = await db.execute(
+        base_query
+        .order_by(Project.created_at.desc())
+        .offset(pagination.offset)
+        .limit(pagination.per_page)
+    )
     projects = result.scalars().all()
-    return [_project_to_response(p) for p in projects]
+    return PaginatedResponse(
+        items=[ProjectResponse.model_validate(p) for p in projects],
+        total=total,
+        page=pagination.page,
+        per_page=pagination.per_page,
+    )
 
 
 @router.post("/", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
@@ -56,7 +58,6 @@ async def create_project(data: ProjectCreate, db: DB, current_user: LeadOrAdmin)
     db.add(project)
     await db.flush()
 
-    # Auto-add creator as lead
     member = ProjectMember(
         project_id=project.id,
         user_id=current_user.id,
@@ -65,7 +66,7 @@ async def create_project(data: ProjectCreate, db: DB, current_user: LeadOrAdmin)
     db.add(member)
     await db.flush()
 
-    return _project_to_response(project)
+    return ProjectResponse.model_validate(project)
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
@@ -74,7 +75,7 @@ async def get_project(project_id: str, db: DB, current_user: CurrentUser):
     project = result.scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    return _project_to_response(project)
+    return ProjectResponse.model_validate(project)
 
 
 @router.put("/{project_id}", response_model=ProjectResponse)
@@ -100,7 +101,7 @@ async def update_project(
         project.end_date = date.fromisoformat(data.end_date)
 
     await db.flush()
-    return _project_to_response(project)
+    return ProjectResponse.model_validate(project)
 
 
 @router.delete("/{project_id}")
@@ -141,18 +142,15 @@ async def list_members(project_id: str, db: DB, current_user: CurrentUser):
 async def add_member(
     project_id: str, data: MemberAdd, db: DB, current_user: LeadOrAdmin
 ):
-    # Check project exists
     proj = await db.execute(select(Project).where(Project.id == project_id))
     if not proj.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # Check user exists
     user_result = await db.execute(select(User).where(User.id == data.user_id))
     user = user_result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Check not already member
     existing = await db.execute(
         select(ProjectMember).where(
             ProjectMember.project_id == project_id,

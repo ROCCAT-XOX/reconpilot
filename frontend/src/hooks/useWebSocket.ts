@@ -1,10 +1,10 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
-import { WebSocketClient, WSEvent } from '../api/websocket'
+import { WebSocketClient, WSEvent, ConnectionStatus } from '../api/websocket'
 
 export function useWebSocket(projectId: string | undefined) {
   const clientRef = useRef<WebSocketClient | null>(null)
   const [events, setEvents] = useState<WSEvent[]>([])
-  const [connected, setConnected] = useState(false)
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected')
 
   useEffect(() => {
     if (!projectId) return
@@ -16,12 +16,12 @@ export function useWebSocket(projectId: string | undefined) {
       setEvents(prev => [...prev.slice(-100), event])
     })
 
+    client.onStatusChange(setConnectionStatus)
+
     client.connect()
-    setConnected(true)
 
     return () => {
       client.disconnect()
-      setConnected(false)
     }
   }, [projectId])
 
@@ -33,5 +33,11 @@ export function useWebSocket(projectId: string | undefined) {
     return clientRef.current?.on(event, handler)
   }, [])
 
-  return { events, connected, subscribe, onEvent }
+  return {
+    events,
+    connected: connectionStatus === 'connected',
+    connectionStatus,
+    subscribe,
+    onEvent,
+  }
 }

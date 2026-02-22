@@ -1,11 +1,21 @@
+from __future__ import annotations
+
 import uuid
 from datetime import date, datetime, timezone
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Date, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.user import ProjectMember
+    from app.models.scope import ScopeTarget
+    from app.models.scan import Scan
+    from app.models.finding import Finding
+    from app.models.report import Report
 
 
 class Project(Base):
@@ -36,25 +46,18 @@ class Project(Base):
     )
 
     # Relationships
-    members: Mapped[list["ProjectMember"]] = relationship(
+    members: Mapped[list[ProjectMember]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
-    scope_targets: Mapped[list["ScopeTarget"]] = relationship(
+    scope_targets: Mapped[list[ScopeTarget]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
-    scans: Mapped[list["Scan"]] = relationship(
+    scans: Mapped[list[Scan]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
-    findings: Mapped[list["Finding"]] = relationship(
+    findings: Mapped[list[Finding]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
-    reports: Mapped[list["Report"]] = relationship(
+    reports: Mapped[list[Report]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
-
-
-from app.models.user import ProjectMember  # noqa: E402
-from app.models.scope import ScopeTarget  # noqa: E402
-from app.models.scan import Scan  # noqa: E402
-from app.models.finding import Finding  # noqa: E402
-from app.models.report import Report  # noqa: E402

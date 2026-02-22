@@ -1,9 +1,8 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, func
 
-from app.api.deps import CurrentUser, DB, PentesterOrAbove
+from app.api.deps import CurrentUser, DB, PentesterOrAbove, Pagination, PaginatedResponse
 from app.models.scan import Scan, ScanJob
 from app.models.scope import ScopeTarget
 from app.schemas.scan import ScanCreate, ScanResponse, ScanJobResponse
@@ -13,31 +12,13 @@ from app.tools.registry import tool_registry
 router = APIRouter()
 
 
-def _scan_to_response(s: Scan) -> ScanResponse:
-    return ScanResponse(
-        id=str(s.id),
-        project_id=str(s.project_id),
-        name=s.name,
-        profile=s.profile,
-        status=s.status,
-        config=s.config,
-        started_at=s.started_at.isoformat() if s.started_at else None,
-        completed_at=s.completed_at.isoformat() if s.completed_at else None,
-        started_by=str(s.started_by) if s.started_by else None,
-        created_at=s.created_at.isoformat(),
-    )
-
-
-# Scan endpoints under /projects/{project_id}/scans
-# But also direct access under /scans/{scan_id}
-
 @router.get("/{scan_id}", response_model=ScanResponse)
 async def get_scan(scan_id: str, db: DB, current_user: CurrentUser):
     result = await db.execute(select(Scan).where(Scan.id == scan_id))
     scan = result.scalar_one_or_none()
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
-    return _scan_to_response(scan)
+    return ScanResponse.model_validate(scan)
 
 
 @router.get("/{scan_id}/jobs", response_model=list[ScanJobResponse])
@@ -134,76 +115,72 @@ async def cancel_scan(scan_id: str, db: DB, current_user: PentesterOrAbove):
     return {"detail": "Scan cancelled", "status": "cancelled"}
 
 
-# --- Project-scoped scan endpoints (mounted under /projects) ---
+# --- Project-scoped scan endpoints ---
 
-class ProjectScanRouter:
-    """Additional endpoints for project-scoped scan operations."""
-
-    @staticmethod
-    async def list_project_scans(project_id: str, db, current_user):
-        result = await db.execute(
-            select(Scan).where(Scan.project_id == project_id).order_by(Scan.created_at.desc())
-        )
-        scans = result.scalars().all()
-        return [_scan_to_response(s) for s in scans]
-
-    @staticmethod
-    async def create_scan(project_id: str, data: ScanCreate, db, current_user):
-        # Verify profile
-        profile = get_profile(data.profile)
-        if not profile and data.profile != "custom":
-            raise HTTPException(status_code=400, detail=f"Unknown profile: {data.profile}")
-
-        # Get scope targets
-        scope_result = await db.execute(
-            select(ScopeTarget).where(
-                ScopeTarget.project_id == project_id,
-                ScopeTarget.is_excluded == False,
-            )
-        )
-        scope_targets_list = [st.target_value for st in scope_result.scalars().all()]
-
-        targets = data.targets or scope_targets_list
-        if not targets:
-            raise HTTPException(status_code=400, detail="No targets specified and no scope defined")
-
-        scan = Scan(
-            project_id=project_id,
-            name=data.name or f"{data.profile.title()} Scan",
-            profile=data.profile,
-            config=data.config,
-            started_by=current_user.id,
-        )
-        db.add(scan)
-        await db.flush()
-
-        # Queue Celery task
-        try:
-            from workers.tasks.scan_tasks import execute_scan_task
-            execute_scan_task.delay(
-                str(scan.id), data.profile, targets, scope_targets_list, data.config
-            )
-        except Exception:
-            # If Celery is not available, just mark as pending
-            pass
-
-        return _scan_to_response(scan)
+project_scans_router = APIRouter()
 
 
-# Mount project scan endpoints on projects router
-from fastapi import APIRouter as _APIRouter
+@project_scans_router.get("/{project_id}/scans", response_model=PaginatedResponse[ScanResponse])
+async def list_project_scans(project_id: str, db: DB, current_user: CurrentUser, pagination: Pagination):
+    # Count
+    count_result = await db.execute(
+        select(func.count()).select_from(Scan).where(Scan.project_id == project_id)
+    )
+    total = count_result.scalar()
 
-project_scans_router = _APIRouter()
-
-
-@project_scans_router.get("/{project_id}/scans", response_model=list[ScanResponse])
-async def list_project_scans(project_id: str, db: DB, current_user: CurrentUser):
-    return await ProjectScanRouter.list_project_scans(project_id, db, current_user)
+    result = await db.execute(
+        select(Scan)
+        .where(Scan.project_id == project_id)
+        .order_by(Scan.created_at.desc())
+        .offset(pagination.offset)
+        .limit(pagination.per_page)
+    )
+    scans = result.scalars().all()
+    return PaginatedResponse(
+        items=[ScanResponse.model_validate(s) for s in scans],
+        total=total,
+        page=pagination.page,
+        per_page=pagination.per_page,
+    )
 
 
 @project_scans_router.post("/{project_id}/scans", response_model=ScanResponse, status_code=201)
 async def create_scan(project_id: str, data: ScanCreate, db: DB, current_user: PentesterOrAbove):
-    return await ProjectScanRouter.create_scan(project_id, data, db, current_user)
+    profile = get_profile(data.profile)
+    if not profile and data.profile != "custom":
+        raise HTTPException(status_code=400, detail=f"Unknown profile: {data.profile}")
+
+    scope_result = await db.execute(
+        select(ScopeTarget).where(
+            ScopeTarget.project_id == project_id,
+            ScopeTarget.is_excluded == False,
+        )
+    )
+    scope_targets_list = [st.target_value for st in scope_result.scalars().all()]
+
+    targets = data.targets or scope_targets_list
+    if not targets:
+        raise HTTPException(status_code=400, detail="No targets specified and no scope defined")
+
+    scan = Scan(
+        project_id=project_id,
+        name=data.name or f"{data.profile.title()} Scan",
+        profile=data.profile,
+        config=data.config,
+        started_by=current_user.id,
+    )
+    db.add(scan)
+    await db.flush()
+
+    try:
+        from workers.tasks.scan_tasks import execute_scan_task
+        execute_scan_task.delay(
+            str(scan.id), data.profile, targets, scope_targets_list, data.config
+        )
+    except Exception:
+        pass
+
+    return ScanResponse.model_validate(scan)
 
 
 # Tools and profiles endpoints
