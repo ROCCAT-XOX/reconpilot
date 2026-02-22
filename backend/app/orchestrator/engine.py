@@ -11,9 +11,15 @@ from app.models.scan import Scan, ScanJob
 from app.orchestrator.chain_logic import ChainLogicEngine
 from app.orchestrator.profiles import ScanProfile
 from app.services.finding_service import compute_finding_fingerprint
+from app.services.scope_validator import ScopeValidator
 from app.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
+
+
+class ScopeViolationError(Exception):
+    """Raised when a scan target is outside the authorized scope."""
+    pass
 
 
 class PipelineEngine:
@@ -60,6 +66,9 @@ class PipelineEngine:
     ) -> None:
         """Execute a complete scan according to the profile."""
         scan_id_str = str(scan_id)
+
+        # --- Mandatory scope enforcement (pre-scan hook) ---
+        self._enforce_scope(targets, scope_targets)
 
         await self.events.emit(scan_id, "scan.started", {
             "profile": profile.name,
@@ -273,6 +282,44 @@ class PipelineEngine:
             if status in ("completed", "failed", "cancelled"):
                 scan.completed_at = datetime.now(UTC)
             await self.db.flush()
+
+    @staticmethod
+    def _enforce_scope(targets: list[str], scope_targets: list[str]) -> None:
+        """Validate all targets against scope before scan execution.
+
+        Raises ScopeViolationError if any target is outside scope.
+        """
+        if not scope_targets:
+            raise ScopeViolationError(
+                "No scope defined. Cannot execute scan without an authorized scope."
+            )
+
+        # Build scope entries from flat list (assume domain type for strings)
+        allowed = []
+        for st in scope_targets:
+            # Detect type heuristically
+            import ipaddress
+            try:
+                ipaddress.ip_address(st)
+                allowed.append({"type": "ip", "value": st})
+            except ValueError:
+                if "/" in st and any(c.isdigit() for c in st.split("/")[0]):
+                    allowed.append({"type": "ip_range", "value": st})
+                else:
+                    allowed.append({"type": "domain", "value": st})
+
+        validator = ScopeValidator(allowed_targets=allowed)
+        out_of_scope = []
+        for target in targets:
+            result = validator.validate(target)
+            if not result.is_valid:
+                out_of_scope.append(target)
+
+        if out_of_scope:
+            raise ScopeViolationError(
+                f"Scan blocked: the following targets are outside the authorized scope: "
+                f"{', '.join(out_of_scope)}. Define them in the project scope first."
+            )
 
     async def _count_findings(self, scan_id) -> int:
         from sqlalchemy import func, select

@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.middleware.audit import AuditLogMiddleware
+from app.api.middleware.rate_limit import RateLimitMiddleware
 from app.api.v1.router import api_router
 from app.api.v1.websocket import router as ws_router
 from app.config import settings
@@ -71,6 +72,9 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+# Rate limiting (Redis-based, must be before audit)
+app.add_middleware(RateLimitMiddleware)
 
 # Audit logging
 app.add_middleware(AuditLogMiddleware)
