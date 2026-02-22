@@ -104,5 +104,6 @@ DB = Annotated[AsyncSession, Depends(get_db)]
 
 # Role-based dependencies
 LeadOrAdmin = Annotated[User, Depends(require_role("admin", "lead"))]
+LeadOrAbove = Annotated[User, Depends(require_role("admin", "lead"))]
 PentesterOrAbove = Annotated[User, Depends(require_role("admin", "lead", "pentester"))]
 AnyAuthenticated = CurrentUser

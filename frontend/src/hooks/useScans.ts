@@ -40,3 +40,14 @@ export function useCreateScan(projectId: string) {
     },
   })
 }
+
+export function useStartScan() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { projectId: string; name?: string; profile: string; targets?: string[] }) =>
+      scansApi.create(data.projectId, { name: data.name, profile: data.profile, targets: data.targets }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['scans', variables.projectId] })
+    },
+  })
+}

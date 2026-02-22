@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Technical Report - {{ project.name }}</title>
+<style>
+  @page { size: A4; margin: 2cm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Courier New', monospace; color: #1a1a2e; line-height: 1.5; font-size: 10pt; }
+  .cover { page-break-after: always; text-align: center; padding-top: 180px; }
+  .cover h1 { font-size: 28pt; color: #6366f1; }
+  .cover h2 { font-size: 16pt; color: #64748b; font-weight: 400; margin-top: 8px; }
+  .cover .meta { margin-top: 50px; color: #94a3b8; font-size: 10pt; text-align: left; max-width: 400px; margin-left: auto; margin-right: auto; }
+  .cover .meta dt { color: #475569; font-weight: 600; }
+  h2 { color: #6366f1; border-bottom: 2px solid #6366f1; padding-bottom: 6px; margin: 25px 0 12px; font-size: 14pt; }
+  h3 { color: #334155; margin: 18px 0 8px; font-size: 12pt; }
+  .toc { page-break-after: always; }
+  .toc ul { list-style: none; }
+  .toc li { padding: 6px 0; border-bottom: 1px dotted #e2e8f0; }
+  .finding { page-break-inside: avoid; margin: 20px 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+  .finding-header { padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+  .finding-header.critical { background: #fef2f2; border-bottom: 3px solid #ef4444; }
+  .finding-header.high { background: #fff7ed; border-bottom: 3px solid #f97316; }
+  .finding-header.medium { background: #fefce8; border-bottom: 3px solid #eab308; }
+  .finding-header.low { background: #eff6ff; border-bottom: 3px solid #3b82f6; }
+  .finding-header.info { background: #f9fafb; border-bottom: 3px solid #6b7280; }
+  .finding-body { padding: 16px; }
+  .finding-meta { display: flex; gap: 20px; margin: 10px 0; font-size: 9pt; color: #64748b; }
+  .finding-meta dt { font-weight: 600; }
+  .evidence { background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 9pt; overflow-x: auto; white-space: pre-wrap; margin: 10px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  th { background: #f1f5f9; text-align: left; padding: 8px 10px; font-size: 9pt; text-transform: uppercase; color: #475569; border-bottom: 2px solid #e2e8f0; }
+  td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; font-size: 9pt; }
+  .severity-badge { padding: 2px 8px; border-radius: 10px; font-size: 8pt; font-weight: 600; text-transform: uppercase; }
+  .badge-critical { background: #fef2f2; color: #ef4444; }
+  .badge-high { background: #fff7ed; color: #f97316; }
+  .badge-medium { background: #fefce8; color: #eab308; }
+  .badge-low { background: #eff6ff; color: #3b82f6; }
+  .badge-info { background: #f9fafb; color: #6b7280; }
+  .footer { margin-top: 30px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 8pt; color: #94a3b8; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>⚒️ ReconForge</h1>
+  <h2>Technical Security Report</h2>
+  <dl class="meta">
+    <dt>Project</dt><dd>{{ project.name }}</dd>
+    <dt>Client</dt><dd>{{ project.client_name }}</dd>
+    <dt>Date</dt><dd>{{ generated_at }}</dd>
+    <dt>Total Findings</dt><dd>{{ total_findings }}</dd>
+    <dt>Classification</dt><dd>CONFIDENTIAL</dd>
+  </dl>
+</div>
+
+<div class="toc">
+  <h2>Table of Contents</h2>
+  <ul>
+    <li>1. Scope & Methodology</li>
+    <li>2. Summary of Findings</li>
+    <li>3. Detailed Findings ({{ total_findings }})</li>
+    <li>4. Tool Coverage</li>
+  </ul>
+</div>
+
+<h2>1. Scope & Methodology</h2>
+<p>The assessment was conducted using ReconForge's automated scanning pipeline with the following tools:</p>
+<ul style="padding-left: 20px; margin: 10px 0;">
+  {% for tool in tools_used %}
+  <li>{{ tool }}</li>
+  {% endfor %}
+</ul>
+
+<h2>2. Summary of Findings</h2>
+<table>
+  <thead>
+    <tr><th>Severity</th><th>Count</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><span class="severity-badge badge-critical">CRITICAL</span></td><td>{{ severity_counts.critical }}</td></tr>
+    <tr><td><span class="severity-badge badge-high">HIGH</span></td><td>{{ severity_counts.high }}</td></tr>
+    <tr><td><span class="severity-badge badge-medium">MEDIUM</span></td><td>{{ severity_counts.medium }}</td></tr>
+    <tr><td><span class="severity-badge badge-low">LOW</span></td><td>{{ severity_counts.low }}</td></tr>
+    <tr><td><span class="severity-badge badge-info">INFO</span></td><td>{{ severity_counts.info }}</td></tr>
+    <tr style="font-weight: bold;"><td>Total</td><td>{{ total_findings }}</td></tr>
+  </tbody>
+</table>
+
+<h2>3. Detailed Findings</h2>
+{% for finding in findings %}
+<div class="finding">
+  <div class="finding-header {{ finding.severity }}">
+    <span class="severity-badge badge-{{ finding.severity }}">{{ finding.severity | upper }}</span>
+    <strong>{{ finding.title }}</strong>
+  </div>
+  <div class="finding-body">
+    <div class="finding-meta">
+      <div><dt>Target:</dt> {{ finding.target_host }}{% if finding.target_port %}:{{ finding.target_port }}{% endif %}</div>
+      {% if finding.target_url %}<div><dt>URL:</dt> {{ finding.target_url }}</div>{% endif %}
+      <div><dt>Tool:</dt> {{ finding.source_tool }}</div>
+      {% if finding.cve_id %}<div><dt>CVE:</dt> {{ finding.cve_id }}</div>{% endif %}
+      {% if finding.cvss_score %}<div><dt>CVSS:</dt> {{ finding.cvss_score }}</div>{% endif %}
+    </div>
+
+    {% if finding.description %}
+    <h3>Description</h3>
+    <p>{{ finding.description }}</p>
+    {% endif %}
+
+    <h3>Status: {{ finding.status }}</h3>
+  </div>
+</div>
+{% endfor %}
+
+<h2>4. Tool Coverage</h2>
+<table>
+  <thead>
+    <tr><th>Tool</th><th>Findings</th></tr>
+  </thead>
+  <tbody>
+    {% for tool, count in tool_counts.items() %}
+    <tr><td>{{ tool }}</td><td>{{ count }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="footer">
+  Generated by ReconForge · {{ generated_at }} · CONFIDENTIAL
+</div>
+
+</body>
+</html>

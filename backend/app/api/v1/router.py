@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1 import auth, projects, scans, findings, reports, users, scope
 from app.api.v1.scans import project_scans_router
 from app.api.v1.findings import project_findings_router
+from app.api.v1.reports import project_reports_router
 
 api_router = APIRouter()
 
@@ -12,6 +13,7 @@ api_router.include_router(projects.router, prefix="/projects", tags=["projects"]
 api_router.include_router(scope.router, prefix="/projects", tags=["scope"])
 api_router.include_router(project_scans_router, prefix="/projects", tags=["scans"])
 api_router.include_router(project_findings_router, prefix="/projects", tags=["findings"])
+api_router.include_router(project_reports_router, prefix="/projects", tags=["reports"])
 api_router.include_router(scans.router, prefix="/scans", tags=["scans"])
 api_router.include_router(findings.router, prefix="/findings", tags=["findings"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])

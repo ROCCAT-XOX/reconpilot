@@ -2,274 +2,193 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { projectsApi } from '../api/projects'
-import { scansApi } from '../api/scans'
-import { findingsApi } from '../api/findings'
-import { StatusBadge, SeverityBadge } from '../components/common/StatusBadge'
-import Modal from '../components/common/Modal'
+import { useProjectScans, useStartScan } from '../hooks/useScans'
+import { useProjectFindings } from '../hooks/useFindings'
+import { StatusBadge } from '../components/common/StatusBadge'
+import SeverityChart from '../components/findings/SeverityChart'
 import ScanConfigurator from '../components/scans/ScanConfigurator'
-import { formatDate, formatDateTime } from '../utils/formatters'
+import ScanTimeline from '../components/scans/ScanTimeline'
+import FindingCard from '../components/findings/FindingCard'
+import Button from '../components/common/Button'
+import { formatDate } from '../utils/formatters'
+import type { Project } from '../types/project'
 
 export default function ProjectDetail() {
-  const { id } = useParams<{ id: string }>()
+  const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const [tab, setTab] = useState<'overview' | 'scans' | 'findings' | 'scope'>('overview')
   const [showScanConfig, setShowScanConfig] = useState(false)
-  const [showAddScope, setShowAddScope] = useState(false)
-  const [scopeForm, setScopeForm] = useState({ target_type: 'domain', target_value: '', is_excluded: false })
-  const [activeTab, setActiveTab] = useState<'overview' | 'scope' | 'scans' | 'findings'>('overview')
 
-  const { data: project } = useQuery({
-    queryKey: ['project', id],
-    queryFn: () => projectsApi.get(id!),
-    enabled: !!id,
+  const { data: project, isLoading } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => projectsApi.get(projectId!),
+    enabled: !!projectId,
   })
 
-  const { data: scans } = useQuery({
-    queryKey: ['scans', id],
-    queryFn: () => scansApi.listByProject(id!),
-    enabled: !!id,
+  const { data: scans = [] } = useProjectScans(projectId)
+  const { data: findings = [] } = useProjectFindings(projectId)
+  const startScan = useStartScan()
+
+  const severityData: Record<string, number> = {}
+  findings.forEach((f: any) => {
+    severityData[f.severity] = (severityData[f.severity] || 0) + 1
   })
 
-  const { data: scope } = useQuery({
-    queryKey: ['scope', id],
-    queryFn: () => projectsApi.listScope(id!),
-    enabled: !!id,
-  })
+  if (isLoading) {
+    return <div className="p-6 text-gray-500">Loading project...</div>
+  }
 
-  const { data: findings } = useQuery({
-    queryKey: ['findings', id],
-    queryFn: () => findingsApi.listByProject(id!),
-    enabled: !!id,
-  })
-
-  const { data: stats } = useQuery({
-    queryKey: ['finding-stats', id],
-    queryFn: () => findingsApi.getStats(id!),
-    enabled: !!id,
-  })
-
-  const createScanMutation = useMutation({
-    mutationFn: (data: any) => scansApi.create(id!, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['scans', id] })
-      setShowScanConfig(false)
-    },
-  })
-
-  const addScopeMutation = useMutation({
-    mutationFn: (data: any) => projectsApi.addScope(id!, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['scope', id] })
-      setShowAddScope(false)
-      setScopeForm({ target_type: 'domain', target_value: '', is_excluded: false })
-    },
-  })
-
-  if (!project) return <div className="text-center py-12 text-gray-500">Loading...</div>
+  if (!project) {
+    return <div className="p-6 text-gray-500">Project not found.</div>
+  }
 
   const tabs = [
     { key: 'overview', label: 'Overview' },
-    { key: 'scope', label: `Scope (${scope?.length || 0})` },
-    { key: 'scans', label: `Scans (${scans?.length || 0})` },
-    { key: 'findings', label: `Findings (${findings?.length || 0})` },
-  ]
+    { key: 'scans', label: `Scans (${scans.length})` },
+    { key: 'findings', label: `Findings (${findings.length})` },
+    { key: 'scope', label: 'Scope' },
+  ] as const
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{project.name}</h1>
+          <button onClick={() => navigate('/projects')} className="text-sm text-gray-500 hover:text-gray-300 mb-2 flex items-center gap-1">
+            ← Back to Projects
+          </button>
+          <h1 className="text-2xl font-bold text-gray-100">{project.name}</h1>
+          <div className="flex items-center gap-3 mt-2">
             <StatusBadge status={project.status} />
+            <span className="text-sm text-gray-500">{project.client_name}</span>
+            <span className="text-sm text-gray-600">|</span>
+            <span className="text-sm text-gray-500">{formatDate(project.start_date)} — {formatDate(project.end_date)}</span>
           </div>
-          <p className="text-gray-500 mt-1">{project.client_name}</p>
+          {project.description && <p className="text-sm text-gray-400 mt-2 max-w-2xl">{project.description}</p>}
         </div>
-        <button onClick={() => setShowScanConfig(true)} className="btn-primary">🚀 New Scan</button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => navigate(`/reports?project=${projectId}`)}>Generate Report</Button>
+          <Button onClick={() => setShowScanConfig(true)}>New Scan</Button>
+        </div>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-dark-700">
-        {tabs.map(tab => (
+        {tabs.map((t) => (
           <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key as any)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab.key
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              tab === t.key
                 ? 'border-primary-500 text-primary-400'
                 : 'border-transparent text-gray-500 hover:text-gray-300'
             }`}
           >
-            {tab.label}
+            {t.label}
           </button>
         ))}
       </div>
 
-      {/* Overview Tab */}
-      {activeTab === 'overview' && (
+      {/* Tab Content */}
+      {tab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="card">
-            <h3 className="font-semibold mb-4">Project Info</h3>
-            <dl className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Client</dt>
-                <dd>{project.client_name}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Status</dt>
-                <dd><StatusBadge status={project.status} /></dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Created</dt>
-                <dd>{formatDate(project.created_at)}</dd>
-              </div>
-              {project.description && (
-                <div>
-                  <dt className="text-gray-500 mb-1">Description</dt>
-                  <dd className="text-gray-300">{project.description}</dd>
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { label: 'Total Scans', value: scans.length, icon: '🔍' },
+              { label: 'Findings', value: findings.length, icon: '🐛' },
+              { label: 'Critical', value: severityData.critical || 0, icon: '🔴' },
+              { label: 'High', value: severityData.high || 0, icon: '🟠' },
+            ].map((stat) => (
+              <div key={stat.label} className="bg-dark-900 rounded-xl border border-dark-700 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl">{stat.icon}</span>
+                  <span className="text-2xl font-bold text-gray-100">{stat.value}</span>
                 </div>
-              )}
-            </dl>
+                <p className="text-xs text-gray-500 mt-2">{stat.label}</p>
+              </div>
+            ))}
           </div>
 
-          <div className="card">
-            <h3 className="font-semibold mb-4">Finding Summary</h3>
-            {stats ? (
-              <div className="grid grid-cols-5 gap-2 text-center">
-                {Object.entries(stats.by_severity).map(([sev, count]) => (
-                  <div key={sev}>
-                    <div className="text-2xl font-bold">
-                      <SeverityBadge severity={sev} />
-                    </div>
-                    <div className="text-lg font-bold mt-1">{count as number}</div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-sm">No findings yet</p>
-            )}
+          {/* Severity Chart */}
+          <div className="bg-dark-900 rounded-xl border border-dark-700 p-4">
+            <h3 className="text-sm font-semibold text-gray-400 mb-3">Findings by Severity</h3>
+            <SeverityChart data={severityData} />
           </div>
         </div>
       )}
 
-      {/* Scope Tab */}
-      {activeTab === 'scope' && (
+      {tab === 'scans' && (
         <div className="space-y-4">
-          <div className="flex justify-end">
-            <button onClick={() => setShowAddScope(true)} className="btn-primary text-sm">+ Add Target</button>
-          </div>
-          {scope && scope.length > 0 ? (
-            <div className="space-y-2">
-              {scope.map((s: any) => (
-                <div key={s.id} className="card flex items-center justify-between py-3">
-                  <div className="flex items-center gap-3">
-                    <span className={`text-xs px-2 py-0.5 rounded ${s.is_excluded ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
-                      {s.is_excluded ? 'EXCLUDED' : s.target_type.toUpperCase()}
-                    </span>
-                    <span className="font-mono text-sm">{s.target_value}</span>
-                  </div>
-                  {s.notes && <span className="text-xs text-gray-500">{s.notes}</span>}
-                </div>
-              ))}
+          {scans.length === 0 ? (
+            <div className="bg-dark-900 rounded-xl border border-dark-700 p-12 text-center">
+              <p className="text-gray-500 mb-4">No scans yet. Start your first scan.</p>
+              <Button onClick={() => setShowScanConfig(true)}>Configure Scan</Button>
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">No scope targets defined</div>
-          )}
-        </div>
-      )}
-
-      {/* Scans Tab */}
-      {activeTab === 'scans' && (
-        <div className="space-y-3">
-          {scans && scans.length > 0 ? (
             scans.map((scan: any) => (
               <div
                 key={scan.id}
                 onClick={() => navigate(`/scans/${scan.id}`)}
-                className="card cursor-pointer hover:border-dark-500 transition-colors"
+                className="bg-dark-900 rounded-xl border border-dark-700 p-4 hover:bg-dark-800/50 cursor-pointer transition-colors"
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-medium">{scan.name || scan.profile}</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {formatDateTime(scan.created_at)}
+                    <h4 className="text-sm font-semibold text-gray-200">{scan.name || `Scan ${scan.id.slice(0, 8)}`}</h4>
+                    <div className="flex items-center gap-3 mt-1">
+                      <StatusBadge status={scan.status} />
+                      <span className="text-xs text-gray-500 capitalize">{scan.profile} profile</span>
                     </div>
                   </div>
-                  <StatusBadge status={scan.status} />
+                  <span className="text-xs text-gray-500">{formatDate(scan.created_at)}</span>
                 </div>
               </div>
             ))
-          ) : (
-            <div className="text-center py-8 text-gray-500">No scans yet</div>
           )}
         </div>
       )}
 
-      {/* Findings Tab */}
-      {activeTab === 'findings' && (
+      {tab === 'findings' && (
         <div className="space-y-3">
-          {findings && findings.length > 0 ? (
-            findings.map((f: any) => (
-              <div key={f.id} className="card cursor-pointer hover:border-dark-500" onClick={() => navigate(`/findings/${f.id}`)}>
-                <div className="flex items-center gap-3">
-                  <SeverityBadge severity={f.severity} />
-                  <span className="font-medium text-sm flex-1 truncate">{f.title}</span>
-                  <span className="text-xs text-gray-500">{f.source_tool}</span>
-                  <StatusBadge status={f.status} />
-                </div>
-              </div>
-            ))
+          {findings.length === 0 ? (
+            <div className="bg-dark-900 rounded-xl border border-dark-700 p-12 text-center text-gray-500">
+              No findings discovered yet.
+            </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">No findings yet</div>
+            findings.map((f: any) => (
+              <FindingCard key={f.id} finding={f} onClick={() => navigate(`/findings?id=${f.id}`)} />
+            ))
           )}
+        </div>
+      )}
+
+      {tab === 'scope' && (
+        <div className="bg-dark-900 rounded-xl border border-dark-700 p-6">
+          <h3 className="text-sm font-semibold text-gray-400 mb-4">Scope Targets</h3>
+          <p className="text-gray-500 text-sm">Scope management coming soon. Define targets via the API.</p>
         </div>
       )}
 
       {/* Scan Config Modal */}
-      <Modal open={showScanConfig} onClose={() => setShowScanConfig(false)} title="Configure Scan">
-        <ScanConfigurator
-          onStart={(config) => createScanMutation.mutate(config)}
-          loading={createScanMutation.isPending}
-        />
-      </Modal>
-
-      {/* Add Scope Modal */}
-      <Modal open={showAddScope} onClose={() => setShowAddScope(false)} title="Add Scope Target">
-        <form onSubmit={(e) => { e.preventDefault(); addScopeMutation.mutate(scopeForm) }} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">Type</label>
-            <select
-              value={scopeForm.target_type}
-              onChange={e => setScopeForm({ ...scopeForm, target_type: e.target.value })}
-              className="input w-full"
-            >
-              <option value="domain">Domain</option>
-              <option value="ip">IP Address</option>
-              <option value="ip_range">IP Range (CIDR)</option>
-              <option value="url">URL</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">Target</label>
-            <input
-              type="text"
-              value={scopeForm.target_value}
-              onChange={e => setScopeForm({ ...scopeForm, target_value: e.target.value })}
-              className="input w-full"
-              placeholder="e.g., example.com"
-              required
+      {showScanConfig && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-dark-900 rounded-xl border border-dark-700 p-6 w-full max-w-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-100">New Scan</h3>
+              <button onClick={() => setShowScanConfig(false)} className="text-gray-500 hover:text-gray-300">✕</button>
+            </div>
+            <ScanConfigurator
+              onStart={(config) => {
+                startScan.mutate(
+                  { projectId: projectId!, ...config },
+                  { onSuccess: () => setShowScanConfig(false) }
+                )
+              }}
             />
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={scopeForm.is_excluded}
-              onChange={e => setScopeForm({ ...scopeForm, is_excluded: e.target.checked })}
-            />
-            <span className="text-gray-400">Exclude from scope</span>
-          </label>
-          <button type="submit" className="btn-primary w-full">Add Target</button>
-        </form>
-      </Modal>
+        </div>
+      )}
     </div>
   )
 }
