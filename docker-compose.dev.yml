@@ -1,0 +1,53 @@
+version: "3.9"
+
+services:
+  nginx:
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_URL=postgresql+asyncpg://reconforge:devpassword@postgres:5432/reconforge
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=dev-secret-key-not-for-production
+      - BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:5173","http://localhost:8080"]
+    volumes:
+      - ./backend:/app
+      - scan_data:/app/data
+    ports:
+      - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://reconforge:devpassword@postgres:5432/reconforge
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=dev-secret-key-not-for-production
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    command: npm run dev -- --host 0.0.0.0
+
+  postgres:
+    environment:
+      - POSTGRES_PASSWORD=devpassword
+    ports:
+      - "5432:5432"
+
+  redis:
+    command: redis-server
+    ports:
+      - "6379:6379"
