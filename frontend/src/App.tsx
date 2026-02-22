@@ -9,7 +9,6 @@ import FindingExplorer from './pages/FindingExplorer'
 import FindingDetail from './pages/FindingDetail'
 import Team from './pages/Team'
 import Settings from './pages/Settings'
-import Reports from './pages/Reports'
 
 function App() {
   return (
@@ -21,13 +20,11 @@ function App() {
         <Route path="projects" element={<Projects />} />
         <Route path="projects/:id" element={<ProjectDetail />} />
         <Route path="projects/:projectId/findings" element={<FindingExplorer />} />
-        <Route path="projects/:projectId/reports" element={<Reports />} />
         <Route path="scans/:id" element={<ScanView />} />
         <Route path="findings" element={<FindingExplorer />} />
         <Route path="findings/:id" element={<FindingDetail />} />
         <Route path="team" element={<Team />} />
         <Route path="settings" element={<Settings />} />
-        <Route path="reports" element={<Reports />} />
       </Route>
     </Routes>
   )
