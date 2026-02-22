@@ -5,10 +5,10 @@ interface Props {
   onSeverityChange: (v: string) => void
   onStatusChange: (v: string) => void
   onToolChange: (v: string) => void
-  tools: string[]
+  tools?: string[]
 }
 
-export default function FindingFilters({ severity, status, tool, onSeverityChange, onStatusChange, onToolChange, tools }: Props) {
+export default function FindingFilters({ severity, status, tool, onSeverityChange, onStatusChange, onToolChange, tools = [] }: Props) {
   return (
     <div className="flex flex-wrap gap-3">
       <select value={severity} onChange={e => onSeverityChange(e.target.value)} className="input text-sm">
