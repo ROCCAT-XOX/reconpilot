@@ -44,10 +44,10 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-dark-950">
+    <div className="min-h-screen flex items-center justify-center bg-dark-950 px-4">
       <div className="card w-full max-w-md">
-        <div className="text-center mb-8">
-          <img src="/logo.png" alt="ReconForge" className="w-24 h-24 mx-auto mb-4" />
+        <div className="text-center mb-6 md:mb-8">
+          <img src="/logo.png" alt="ReconForge" className="w-16 h-16 md:w-24 md:h-24 mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-primary-400">ReconForge</h1>
           <p className="text-gray-500 mt-2">Reconnaissance Orchestration Platform</p>
         </div>

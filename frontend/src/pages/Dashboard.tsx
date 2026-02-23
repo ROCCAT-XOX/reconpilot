@@ -46,7 +46,7 @@ export default function Dashboard() {
         <p className="text-gray-500 mt-1">ReconForge Overview</p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
         {statCards.map((stat) => (
           <div key={stat.label} className="card">
             <div className="flex items-center justify-between">
@@ -114,14 +114,14 @@ export default function Dashboard() {
 
       <div className="card">
         <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-        <div className="flex gap-3">
-          <button onClick={() => navigate('/projects')} className="btn-primary">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button onClick={() => navigate('/projects')} className="btn-primary min-h-[44px]">
             + New Project
           </button>
-          <button onClick={() => navigate('/findings')} className="btn-secondary">
+          <button onClick={() => navigate('/findings')} className="btn-secondary min-h-[44px]">
             📊 View All Findings
           </button>
-          <button onClick={() => navigate('/team')} className="btn-secondary">
+          <button onClick={() => navigate('/team')} className="btn-secondary min-h-[44px]">
             👥 Manage Team
           </button>
         </div>

@@ -362,7 +362,7 @@ function Step1Profile({ state, update }: StepProps) {
     <div className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-400 mb-3">Scan Profile</label>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {profiles.map(p => (
             <button
               key={p.key}
@@ -463,7 +463,7 @@ function Step2Targets({ state, update, scopeTargets }: StepProps & { scopeTarget
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-400 mb-1">Domains</label>
           <textarea
@@ -604,7 +604,7 @@ function Step3Intel({ state, update }: StepProps) {
         />
       </AutoDiscoverToggle>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-400 mb-1">Contact Emails / People</label>
           <textarea
@@ -644,7 +644,7 @@ function Step4Advanced({ state, update }: StepProps) {
       {/* Nmap */}
       <div className="border border-dark-700 rounded-lg p-3 space-y-2">
         <h4 className="text-sm font-semibold text-gray-300">🔎 Nmap</h4>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs text-gray-500 mb-1">Port Range</label>
             <select
@@ -733,7 +733,7 @@ function Step4Advanced({ state, update }: StepProps) {
       {/* Ffuf */}
       <div className="border border-dark-700 rounded-lg p-3 space-y-2">
         <h4 className="text-sm font-semibold text-gray-300">📂 ffuf / Gobuster</h4>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs text-gray-500 mb-1">Wordlist</label>
             <select
@@ -762,7 +762,7 @@ function Step4Advanced({ state, update }: StepProps) {
       {/* SQLMap */}
       <div className="border border-dark-700 rounded-lg p-3 space-y-2">
         <h4 className="text-sm font-semibold text-gray-300">💉 SQLMap</h4>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs text-gray-500 mb-1">Risk Level (1-3)</label>
             <input
@@ -790,7 +790,7 @@ function Step4Advanced({ state, update }: StepProps) {
       {/* Global settings */}
       <div className="border border-dark-700 rounded-lg p-3 space-y-2">
         <h4 className="text-sm font-semibold text-gray-300">⚙️ General</h4>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs text-gray-500 mb-1">Timeout per tool (minutes)</label>
             <input

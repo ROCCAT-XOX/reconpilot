@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @layer base {
   body {
     @apply bg-dark-900 text-gray-100 antialiased;
@@ -16,7 +26,7 @@
     @apply bg-dark-700 hover:bg-dark-600 text-gray-200 font-medium py-2 px-4 rounded-lg transition-colors border border-dark-600;
   }
   .card {
-    @apply bg-dark-800 border border-dark-700 rounded-xl p-6;
+    @apply bg-dark-800 border border-dark-700 rounded-xl p-4 md:p-6;
   }
   .input {
     @apply bg-dark-800 border border-dark-600 rounded-lg px-4 py-2 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;

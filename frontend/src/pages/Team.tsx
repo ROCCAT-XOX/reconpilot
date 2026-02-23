@@ -46,17 +46,17 @@ export default function Team() {
       ) : (
         <div className="space-y-3">
           {users?.map((user: User) => (
-            <div key={user.id} className="card flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-primary-500/20 flex items-center justify-center text-primary-400 font-bold">
+            <div key={user.id} className="card flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className="w-10 h-10 rounded-full bg-primary-500/20 flex items-center justify-center text-primary-400 font-bold shrink-0">
                   {user.full_name?.charAt(0)?.toUpperCase() || '?'}
                 </div>
-                <div>
-                  <div className="font-medium">{user.full_name}</div>
-                  <div className="text-xs text-gray-500">{user.email}</div>
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{user.full_name}</div>
+                  <div className="text-xs text-gray-500 truncate">{user.email}</div>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 md:gap-4 ml-13 sm:ml-0">
                 <span className={`text-xs px-2 py-0.5 rounded ${
                   user.role === 'admin' ? 'bg-red-500/20 text-red-400' :
                   user.role === 'lead' ? 'bg-purple-500/20 text-purple-400' :
@@ -70,7 +70,7 @@ export default function Team() {
                 </span>
                 <button
                   onClick={() => toggleMutation.mutate({ id: user.id, is_active: !user.is_active })}
-                  className="text-xs text-gray-500 hover:text-gray-300"
+                  className="text-xs text-gray-500 hover:text-gray-300 min-h-[44px] flex items-center"
                 >
                   {user.is_active ? 'Disable' : 'Enable'}
                 </button>

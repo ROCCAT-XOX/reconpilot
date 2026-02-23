@@ -88,16 +88,16 @@ export default function ProjectDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{project.name}</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-xl md:text-2xl font-bold">{project.name}</h1>
             <StatusBadge status={project.status} />
           </div>
           <p className="text-gray-500 mt-1">{project.client_name}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setShowScanConfig(true)} className="btn-primary">🚀 New Scan</button>
+          <button onClick={() => setShowScanConfig(true)} className="btn-primary min-h-[44px]">🚀 New Scan</button>
           <div className="relative group">
             <button className="px-3 py-2 text-gray-400 hover:text-gray-200 border border-dark-700 rounded-lg text-sm">
               ⋮
@@ -115,12 +115,12 @@ export default function ProjectDetail() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-dark-700">
+      <div className="flex gap-1 border-b border-dark-700 overflow-x-auto scrollbar-hide -mx-3 px-3 md:mx-0 md:px-0">
         {tabs.map(tab => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key as any)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap min-h-[44px] ${
               activeTab === tab.key
                 ? 'border-primary-500 text-primary-400'
                 : 'border-transparent text-gray-500 hover:text-gray-300'
@@ -161,7 +161,7 @@ export default function ProjectDetail() {
           <div className="card">
             <h3 className="font-semibold mb-4">Finding Summary</h3>
             {stats ? (
-              <div className="grid grid-cols-5 gap-2 text-center">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 text-center">
                 {Object.entries(stats.by_severity).map(([sev, count]) => (
                   <div key={sev}>
                     <div className="text-2xl font-bold">

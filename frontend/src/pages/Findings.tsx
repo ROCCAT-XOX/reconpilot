@@ -40,13 +40,13 @@ export default function Findings() {
   })
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-100">Findings Explorer</h1>
         <p className="text-sm text-gray-500 mt-1">Browse and manage discovered vulnerabilities</p>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
         {[
           { label: 'Total', value: findings.length, color: 'text-gray-100' },
           { label: 'Critical', value: severityData.critical || 0, color: 'text-red-400' },
@@ -60,8 +60,8 @@ export default function Findings() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
+        <div className="space-y-4 md:space-y-6">
           <div className="bg-dark-900 rounded-xl border border-dark-700 p-4">
             <h3 className="text-sm font-semibold text-gray-400 mb-3">Filters</h3>
             <FindingFilters

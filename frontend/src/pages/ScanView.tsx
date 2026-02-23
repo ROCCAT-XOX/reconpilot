@@ -40,26 +40,26 @@ export default function ScanView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">{scan.name || scan.profile}</h1>
-          <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+          <h1 className="text-xl md:text-2xl font-bold">{scan.name || scan.profile}</h1>
+          <div className="flex items-center gap-2 md:gap-3 mt-1 text-sm text-gray-500 flex-wrap">
             <StatusBadge status={scan.status} />
             <span>Profile: {scan.profile}</span>
             {duration && <span>Duration: {formatDuration(duration)}</span>}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {scan.status === 'running' && (
             <>
-              <button onClick={() => pauseMutation.mutate()} className="btn-secondary text-sm">⏸ Pause</button>
-              <button onClick={() => cancelMutation.mutate()} className="btn-secondary text-sm text-red-400">✗ Cancel</button>
+              <button onClick={() => pauseMutation.mutate()} className="btn-secondary text-sm min-h-[44px]">⏸ Pause</button>
+              <button onClick={() => cancelMutation.mutate()} className="btn-secondary text-sm text-red-400 min-h-[44px]">✗ Cancel</button>
             </>
           )}
           {scan.status === 'paused' && (
-            <button onClick={() => resumeMutation.mutate()} className="btn-primary text-sm">▶ Resume</button>
+            <button onClick={() => resumeMutation.mutate()} className="btn-primary text-sm min-h-[44px]">▶ Resume</button>
           )}
-          <button onClick={() => navigate(`/projects/${scan.project_id}`)} className="btn-secondary text-sm">← Back</button>
+          <button onClick={() => navigate(`/projects/${scan.project_id}`)} className="btn-secondary text-sm min-h-[44px]">← Back</button>
         </div>
       </div>
 

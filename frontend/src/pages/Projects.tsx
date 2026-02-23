@@ -49,7 +49,7 @@ export default function Projects() {
           <h1 className="text-2xl font-bold">Projects</h1>
           <p className="text-gray-500 mt-1">{projects?.length || 0} projects</p>
         </div>
-        <button onClick={() => setShowCreate(true)} className="btn-primary">+ New Project</button>
+        <button onClick={() => setShowCreate(true)} className="btn-primary min-h-[44px]">+ New Project</button>
       </div>
 
       {isLoading ? (
