@@ -21,15 +21,15 @@ async def list_scans(db: DB, current_user: CurrentUser, pagination: Pagination):
     result = await db.execute(
         select(Scan)
         .order_by(Scan.created_at.desc())
-        .offset(pagination.skip)
-        .limit(pagination.limit)
+        .offset(pagination.offset)
+        .limit(pagination.per_page)
     )
     scans = result.scalars().all()
     return PaginatedResponse(
         items=scans,
         total=total,
         page=pagination.page,
-        per_page=pagination.limit,
+        per_page=pagination.per_page,
     )
 
 
