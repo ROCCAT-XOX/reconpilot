@@ -1,5 +1,9 @@
 # ReconForge — Autonomous Improvement Roadmap
 
+## Test Target
+- Domain: `promediaweb.de`
+- Contact: `stumpf@promediaweb.de`
+
 ## Priority 1 — Bug Fixes & Polish
 - [ ] `/api/v1/scans/` returns 404 — needs router registration or trailing slash fix
 - [ ] Frontend: verify Scan Wizard renders correctly with new Auto-Discover toggles

@@ -11,11 +11,18 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     get_token_ttl_seconds,
+    hash_password,
     verify_password,
     verify_token,
 )
 from app.models.user import User
-from app.schemas.user import LoginRequest, RefreshRequest, TokenResponse, UserResponse
+from app.schemas.user import (
+    LoginRequest,
+    PasswordChangeRequest,
+    RefreshRequest,
+    TokenResponse,
+    UserResponse,
+)
 
 router = APIRouter()
 
@@ -137,6 +144,24 @@ async def logout(
     except Exception:
         pass
     return {"detail": "Successfully logged out"}
+
+
+@router.put("/password")
+@router.post("/password")
+async def change_password(
+    data: PasswordChangeRequest,
+    current_user: CurrentUser,
+    db: DB,
+):
+    """Change the current user's password."""
+    if not verify_password(data.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+    current_user.hashed_password = hash_password(data.new_password)
+    await db.flush()
+    return {"detail": "Password updated successfully"}
 
 
 @router.get("/me", response_model=UserResponse)

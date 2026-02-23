@@ -1,12 +1,13 @@
 from fastapi import APIRouter
 
-from app.api.v1 import auth, findings, projects, reports, scans, scope, users
+from app.api.v1 import auth, dashboard, findings, projects, reports, scans, scope, users
 from app.api.v1.findings import project_findings_router
 from app.api.v1.scans import project_scans_router
 
 api_router = APIRouter()
 
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
+api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(projects.router, prefix="/projects", tags=["projects"])
 api_router.include_router(scope.router, prefix="/projects", tags=["scope"])

@@ -12,6 +12,7 @@ from app.core.security import (
     verify_password,
     verify_token,
 )
+from app.schemas.user import PasswordChangeRequest
 
 
 class TestTokenCreation:
@@ -93,3 +94,15 @@ class TestRBAC:
 
     def test_unknown_role_has_no_permissions(self):
         assert not has_permission("unknown_role", "findings.view")
+
+
+class TestPasswordChangeSchema:
+    def test_valid_password_change(self):
+        req = PasswordChangeRequest(current_password="old", new_password="newpass123")
+        assert req.current_password == "old"
+        assert req.new_password == "newpass123"
+
+    def test_short_new_password_rejected(self):
+        import pydantic
+        with pytest.raises(pydantic.ValidationError):
+            PasswordChangeRequest(current_password="old", new_password="short")
