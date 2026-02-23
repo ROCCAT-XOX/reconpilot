@@ -13,6 +13,26 @@ from app.tools.registry import tool_registry
 router = APIRouter()
 
 
+@router.get("/", response_model=PaginatedResponse[ScanResponse])
+async def list_scans(db: DB, current_user: CurrentUser, pagination: Pagination):
+    """List all scans across all projects."""
+    total_q = select(func.count()).select_from(Scan)
+    total = (await db.execute(total_q)).scalar() or 0
+    result = await db.execute(
+        select(Scan)
+        .order_by(Scan.created_at.desc())
+        .offset(pagination.skip)
+        .limit(pagination.limit)
+    )
+    scans = result.scalars().all()
+    return PaginatedResponse(
+        items=scans,
+        total=total,
+        page=pagination.page,
+        per_page=pagination.limit,
+    )
+
+
 @router.get("/{scan_id}", response_model=ScanResponse)
 async def get_scan(scan_id: str, db: DB, current_user: CurrentUser):
     result = await db.execute(select(Scan).where(Scan.id == scan_id))
