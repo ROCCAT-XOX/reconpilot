@@ -62,6 +62,24 @@ class FindingResponse(BaseModel):
         return super().model_validate(obj, **kwargs)
 
 
+class FindingCreate(BaseModel):
+    scan_id: str
+    project_id: str
+    title: str
+    description: str | None = None
+    severity: str = Field(..., pattern="^(critical|high|medium|low|info)$")
+    cvss_score: float | None = None
+    cve_id: str | None = None
+    cwe_id: str | None = None
+    target_host: str | None = None
+    target_port: int | None = None
+    target_protocol: str | None = None
+    target_url: str | None = None
+    target_service: str | None = None
+    source_tool: str
+    raw_evidence: dict | None = None
+
+
 class FindingUpdate(BaseModel):
     status: str | None = Field(
         default=None,

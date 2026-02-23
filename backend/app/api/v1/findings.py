@@ -9,6 +9,7 @@ from app.models.report import ScanComparison
 from app.schemas.finding import (
     CommentCreate,
     CommentResponse,
+    FindingCreate,
     FindingResponse,
     FindingStats,
     FindingUpdate,
@@ -59,6 +60,39 @@ async def list_all_findings(
         page=pagination.page,
         per_page=pagination.per_page,
     )
+
+
+@router.post("/", response_model=FindingResponse, status_code=201)
+async def create_finding(data: FindingCreate, db: DB, current_user: PentesterOrAbove):
+    """Create a new finding."""
+    import hashlib
+    fingerprint = hashlib.sha256(
+        f"{data.title}:{data.target_host}:{data.target_port}:{data.source_tool}".encode()
+    ).hexdigest()[:16]
+
+    finding = Finding(
+        scan_id=data.scan_id,
+        project_id=data.project_id,
+        title=data.title,
+        description=data.description,
+        severity=data.severity,
+        cvss_score=data.cvss_score,
+        cve_id=data.cve_id,
+        cwe_id=data.cwe_id,
+        target_host=data.target_host,
+        target_port=data.target_port,
+        target_protocol=data.target_protocol,
+        target_url=data.target_url,
+        target_service=data.target_service,
+        source_tool=data.source_tool,
+        raw_evidence=data.raw_evidence,
+        status="open",
+        fingerprint=fingerprint,
+    )
+    db.add(finding)
+    await db.commit()
+    await db.refresh(finding)
+    return FindingResponse.model_validate(finding)
 
 
 @router.get("/{finding_id}", response_model=FindingResponse)
