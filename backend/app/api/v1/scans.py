@@ -26,7 +26,7 @@ async def list_scans(db: DB, current_user: CurrentUser, pagination: Pagination):
     )
     scans = result.scalars().all()
     return PaginatedResponse(
-        items=scans,
+        items=[ScanResponse.model_validate(s) for s in scans],
         total=total,
         page=pagination.page,
         per_page=pagination.per_page,
