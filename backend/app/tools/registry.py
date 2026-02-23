@@ -1,12 +1,16 @@
 from app.tools.base import BaseToolWrapper
 from app.tools.exploitation.sqlmap import SqlmapWrapper
+from app.tools.recon.amass import AmassWrapper
 from app.tools.recon.httpx import HttpxWrapper
 from app.tools.recon.subfinder import SubfinderWrapper
 from app.tools.scanning.ffuf import FfufWrapper
+from app.tools.scanning.gobuster import GobusterWrapper
 from app.tools.scanning.nikto import NiktoWrapper
 from app.tools.scanning.nmap import NmapWrapper
 from app.tools.scanning.nuclei import NucleiWrapper
 from app.tools.web_analysis.sslyze import SSLyzeWrapper
+from app.tools.web_analysis.testssl import TestsslWrapper
+from app.tools.web_analysis.whatweb import WhatWebWrapper
 
 
 class ToolRegistry:
@@ -61,6 +65,12 @@ def create_tool_registry() -> ToolRegistry:
     registry.register(SSLyzeWrapper())
     registry.register(NiktoWrapper())
     registry.register(SqlmapWrapper())
+
+    # Wave 2 — Additional tools
+    registry.register(AmassWrapper())
+    registry.register(WhatWebWrapper())
+    registry.register(GobusterWrapper())
+    registry.register(TestsslWrapper())
 
     return registry
 

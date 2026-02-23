@@ -16,6 +16,7 @@ export const projectsApi = {
   update: (id: string, data: Partial<Project>) =>
     apiClient.put<Project>(`/projects/${id}`, data).then(r => r.data),
   delete: (id: string) => apiClient.delete(`/projects/${id}`).then(r => r.data),
+  deletePermanent: (id: string) => apiClient.delete(`/projects/${id}/permanent`).then(r => r.data),
 
   // Members
   listMembers: (projectId: string) =>

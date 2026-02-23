@@ -120,6 +120,17 @@ async def archive_project(project_id: str, db: DB, current_user: LeadOrAdmin):
     return {"detail": "Project archived"}
 
 
+@router.delete("/{project_id}/permanent")
+async def delete_project_permanent(project_id: str, db: DB, current_user: LeadOrAdmin):
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    await db.delete(project)
+    await db.flush()
+    return {"detail": "Project permanently deleted"}
+
+
 # --- Member Management ---
 
 @router.get("/{project_id}/members", response_model=list[MemberResponse])

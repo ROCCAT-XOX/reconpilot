@@ -11,6 +11,7 @@ export default function Projects() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
   const [form, setForm] = useState({ name: '', client_name: '', description: '' })
 
   const { data: projects, isLoading } = useQuery({
@@ -25,6 +26,14 @@ export default function Projects() {
       setShowCreate(false)
       setForm({ name: '', client_name: '', description: '' })
       navigate(`/projects/${project.id}`)
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => projectsApi.deletePermanent(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      setDeleteTarget(null)
     },
   })
 
@@ -45,25 +54,40 @@ export default function Projects() {
 
       {isLoading ? (
         <div className="text-center py-12 text-gray-500">Loading...</div>
-      ) : (
+      ) : projects && projects.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects?.map((project: Project) => (
+          {projects.map((project: Project) => (
             <div
               key={project.id}
-              onClick={() => navigate(`/projects/${project.id}`)}
-              className="card cursor-pointer hover:border-dark-500 transition-colors"
+              className="card cursor-pointer hover:border-dark-500 transition-colors relative group"
             >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold truncate">{project.name}</h3>
-                <StatusBadge status={project.status} />
+              <div onClick={() => navigate(`/projects/${project.id}`)} className="flex-1">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold truncate">{project.name}</h3>
+                  <StatusBadge status={project.status} />
+                </div>
+                <p className="text-sm text-gray-500 mb-3">{project.client_name}</p>
+                {project.description && (
+                  <p className="text-xs text-gray-600 line-clamp-2 mb-3">{project.description}</p>
+                )}
+                <div className="text-xs text-gray-600">Created {formatDate(project.created_at)}</div>
               </div>
-              <p className="text-sm text-gray-500 mb-3">{project.client_name}</p>
-              {project.description && (
-                <p className="text-xs text-gray-600 line-clamp-2 mb-3">{project.description}</p>
-              )}
-              <div className="text-xs text-gray-600">Created {formatDate(project.created_at)}</div>
+              <button
+                onClick={(e) => { e.stopPropagation(); setDeleteTarget(project) }}
+                className="absolute top-3 right-3 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Delete project"
+              >
+                🗑️
+              </button>
             </div>
           ))}
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <div className="text-4xl mb-3">📁</div>
+          <p className="text-gray-400 text-lg">No projects yet</p>
+          <p className="text-gray-600 text-sm mt-1">Create your first project to get started</p>
+          <button onClick={() => setShowCreate(true)} className="btn-primary mt-4">+ New Project</button>
         </div>
       )}
 
@@ -101,6 +125,27 @@ export default function Projects() {
             {createMutation.isPending ? 'Creating...' : 'Create Project'}
           </button>
         </form>
+      </Modal>
+
+      {/* Delete Confirmation */}
+      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete Project">
+        <div className="space-y-4">
+          <p className="text-gray-300 text-sm">
+            Delete project <strong>{deleteTarget?.name}</strong>? This will permanently remove all scans and findings.
+          </p>
+          <div className="flex gap-3 justify-end">
+            <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200">
+              Cancel
+            </button>
+            <button
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              disabled={deleteMutation.isPending}
+              className="px-4 py-2 text-sm bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/30 disabled:opacity-50"
+            >
+              {deleteMutation.isPending ? 'Deleting...' : '🗑️ Delete Permanently'}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   )

@@ -76,11 +76,24 @@ export default function Settings() {
 
       <div className="card">
         <h3 className="font-semibold mb-4">About</h3>
-        <div className="text-sm text-gray-500 space-y-1">
-          <p>ReconForge v0.2.0</p>
-          <p>Reconnaissance Orchestration Platform</p>
-          <p>Built with FastAPI + React + Celery</p>
-        </div>
+        <dl className="space-y-3 text-sm">
+          <div className="flex justify-between">
+            <dt className="text-gray-500">Version</dt>
+            <dd>ReconForge v0.3.0</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-gray-500">Platform</dt>
+            <dd>FastAPI + React + Celery</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-gray-500">Logged in as</dt>
+            <dd>{user?.email || '—'}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-gray-500">Role</dt>
+            <dd className="capitalize">{user?.role || '—'}</dd>
+          </div>
+        </dl>
       </div>
     </div>
   )

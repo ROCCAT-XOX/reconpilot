@@ -151,6 +151,14 @@ async def create_scan(project_id: str, data: ScanCreate, db: DB, current_user: P
     if not profile and data.profile != "custom":
         raise HTTPException(status_code=400, detail=f"Unknown profile: {data.profile}")
 
+    if data.profile == "custom":
+        selected_tools = data.config.get("tools", [])
+        if not selected_tools:
+            raise HTTPException(
+                status_code=400,
+                detail="Custom profile requires at least one tool to be selected",
+            )
+
     scope_result = await db.execute(
         select(ScopeTarget).where(
             ScopeTarget.project_id == project_id,

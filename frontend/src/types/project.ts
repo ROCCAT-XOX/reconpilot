@@ -27,9 +27,9 @@ export interface ProjectMember {
 export interface ScopeTarget {
   id: string
   project_id: string
-  target_type: 'domain' | 'ip' | 'cidr' | 'url'
-  value: string
-  is_in_scope: boolean
+  target_type: 'domain' | 'ip' | 'cidr' | 'url' | 'ip_range'
+  target_value: string
+  is_excluded: boolean
   notes: string | null
   created_at: string
 }

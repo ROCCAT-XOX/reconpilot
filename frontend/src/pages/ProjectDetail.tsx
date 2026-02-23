@@ -15,6 +15,7 @@ export default function ProjectDetail() {
   const queryClient = useQueryClient()
   const [showScanConfig, setShowScanConfig] = useState(false)
   const [showAddScope, setShowAddScope] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [scopeForm, setScopeForm] = useState({ target_type: 'domain', target_value: '', is_excluded: false })
   const [activeTab, setActiveTab] = useState<'overview' | 'scope' | 'scans' | 'findings'>('overview')
 
@@ -65,7 +66,18 @@ export default function ProjectDetail() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: () => projectsApi.deletePermanent(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      navigate('/projects')
+    },
+  })
+
   if (!project) return <div className="text-center py-12 text-gray-500">Loading...</div>
+
+  const includedScope = scope?.filter((s: any) => !s.is_excluded) || []
+  const excludedScope = scope?.filter((s: any) => s.is_excluded) || []
 
   const tabs = [
     { key: 'overview', label: 'Overview' },
@@ -84,7 +96,22 @@ export default function ProjectDetail() {
           </div>
           <p className="text-gray-500 mt-1">{project.client_name}</p>
         </div>
-        <button onClick={() => setShowScanConfig(true)} className="btn-primary">🚀 New Scan</button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowScanConfig(true)} className="btn-primary">🚀 New Scan</button>
+          <div className="relative group">
+            <button className="px-3 py-2 text-gray-400 hover:text-gray-200 border border-dark-700 rounded-lg text-sm">
+              ⋮
+            </button>
+            <div className="absolute right-0 mt-1 w-48 bg-dark-800 border border-dark-700 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-dark-700 rounded-lg"
+              >
+                🗑️ Delete Project
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -145,7 +172,11 @@ export default function ProjectDetail() {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-sm">No findings yet</p>
+              <div className="text-center py-6">
+                <div className="text-3xl mb-2">🔍</div>
+                <p className="text-gray-500 text-sm">No findings yet</p>
+                <p className="text-gray-600 text-xs mt-1">Run a scan to discover vulnerabilities</p>
+              </div>
             )}
           </div>
         </div>
@@ -154,7 +185,17 @@ export default function ProjectDetail() {
       {/* Scope Tab */}
       {activeTab === 'scope' && (
         <div className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">
+                ✓ {includedScope.length} included
+              </span>
+              {excludedScope.length > 0 && (
+                <span className="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded">
+                  ✕ {excludedScope.length} excluded
+                </span>
+              )}
+            </div>
             <button onClick={() => setShowAddScope(true)} className="btn-primary text-sm">+ Add Target</button>
           </div>
           {scope && scope.length > 0 ? (
@@ -172,7 +213,11 @@ export default function ProjectDetail() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">No scope targets defined</div>
+            <div className="text-center py-8">
+              <div className="text-3xl mb-2">🎯</div>
+              <p className="text-gray-500">No scope targets defined</p>
+              <p className="text-gray-600 text-xs mt-1">Add targets to define your engagement scope</p>
+            </div>
           )}
         </div>
       )}
@@ -199,7 +244,11 @@ export default function ProjectDetail() {
               </div>
             ))
           ) : (
-            <div className="text-center py-8 text-gray-500">No scans yet</div>
+            <div className="text-center py-8">
+              <div className="text-3xl mb-2">📡</div>
+              <p className="text-gray-500">No scans yet</p>
+              <p className="text-gray-600 text-xs mt-1">Start a scan to begin reconnaissance</p>
+            </div>
           )}
         </div>
       )}
@@ -208,26 +257,42 @@ export default function ProjectDetail() {
       {activeTab === 'findings' && (
         <div className="space-y-3">
           {findings && findings.length > 0 ? (
-            findings.map((f: any) => (
-              <div key={f.id} className="card cursor-pointer hover:border-dark-500" onClick={() => navigate(`/findings/${f.id}`)}>
-                <div className="flex items-center gap-3">
-                  <SeverityBadge severity={f.severity} />
-                  <span className="font-medium text-sm flex-1 truncate">{f.title}</span>
-                  <span className="text-xs text-gray-500">{f.source_tool}</span>
-                  <StatusBadge status={f.status} />
-                </div>
+            <>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => navigate(`/projects/${id}/findings`)}
+                  className="text-sm text-primary-400 hover:text-primary-300"
+                >
+                  View in Findings Explorer →
+                </button>
               </div>
-            ))
+              {findings.map((f: any) => (
+                <div key={f.id} className="card cursor-pointer hover:border-dark-500" onClick={() => navigate(`/findings/${f.id}`)}>
+                  <div className="flex items-center gap-3">
+                    <SeverityBadge severity={f.severity} />
+                    <span className="font-medium text-sm flex-1 truncate">{f.title}</span>
+                    <span className="text-xs text-gray-500">{f.source_tool}</span>
+                    <StatusBadge status={f.status} />
+                  </div>
+                </div>
+              ))}
+            </>
           ) : (
-            <div className="text-center py-8 text-gray-500">No findings yet</div>
+            <div className="text-center py-8">
+              <div className="text-3xl mb-2">🛡️</div>
+              <p className="text-gray-500">No findings yet</p>
+              <p className="text-gray-600 text-xs mt-1">Findings will appear here after scans complete</p>
+            </div>
           )}
         </div>
       )}
 
       {/* Scan Config Modal */}
-      <Modal open={showScanConfig} onClose={() => setShowScanConfig(false)} title="Configure Scan">
+      <Modal open={showScanConfig} onClose={() => setShowScanConfig(false)} title="Configure Scan" size="lg">
         <ScanConfigurator
+          scopeTargets={scope || []}
           onStart={(config) => createScanMutation.mutate(config)}
+          onClose={() => setShowScanConfig(false)}
           loading={createScanMutation.isPending}
         />
       </Modal>
@@ -269,6 +334,30 @@ export default function ProjectDetail() {
           </label>
           <button type="submit" className="btn-primary w-full">Add Target</button>
         </form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal open={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Delete Project">
+        <div className="space-y-4">
+          <p className="text-gray-300 text-sm">
+            Delete project <strong>{project.name}</strong>? This will permanently remove all scans and findings.
+          </p>
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => setShowDeleteConfirm(false)}
+              className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+              className="px-4 py-2 text-sm bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/30 disabled:opacity-50"
+            >
+              {deleteMutation.isPending ? 'Deleting...' : '🗑️ Delete Permanently'}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   )

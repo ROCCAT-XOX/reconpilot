@@ -40,6 +40,7 @@ PROFILES: dict[str, ScanProfile] = {
                 order=1,
                 tools=[
                     ToolConfig("subfinder"),
+                    ToolConfig("amass"),
                 ],
             ),
             ScanPhase(
@@ -48,6 +49,7 @@ PROFILES: dict[str, ScanProfile] = {
                 tools=[
                     ToolConfig("httpx", config={"tech_detect": True}),
                     ToolConfig("nmap", config={"scan_type": "quick"}),
+                    ToolConfig("whatweb"),
                 ],
             ),
         ],
@@ -62,6 +64,7 @@ PROFILES: dict[str, ScanProfile] = {
                 order=1,
                 tools=[
                     ToolConfig("subfinder"),
+                    ToolConfig("amass"),
                 ],
             ),
             ScanPhase(
@@ -70,6 +73,7 @@ PROFILES: dict[str, ScanProfile] = {
                 tools=[
                     ToolConfig("httpx", config={"tech_detect": True}),
                     ToolConfig("nmap", config={"scan_type": "service"}),
+                    ToolConfig("whatweb"),
                 ],
             ),
             ScanPhase(
@@ -79,6 +83,7 @@ PROFILES: dict[str, ScanProfile] = {
                     ToolConfig("nuclei", config={"severities": ["critical", "high", "medium"]}),
                     ToolConfig("nikto"),
                     ToolConfig("sslyze"),
+                    ToolConfig("testssl"),
                 ],
             ),
             ScanPhase(
@@ -86,6 +91,7 @@ PROFILES: dict[str, ScanProfile] = {
                 order=4,
                 tools=[
                     ToolConfig("ffuf", config={"wordlist": "common.txt"}),
+                    ToolConfig("gobuster", config={"wordlist": "/usr/share/wordlists/dirb/common.txt"}),
                 ],
             ),
         ],
@@ -100,6 +106,7 @@ PROFILES: dict[str, ScanProfile] = {
                 order=1,
                 tools=[
                     ToolConfig("subfinder"),
+                    ToolConfig("amass"),
                 ],
             ),
             ScanPhase(
@@ -108,6 +115,7 @@ PROFILES: dict[str, ScanProfile] = {
                 tools=[
                     ToolConfig("httpx", config={"tech_detect": True}),
                     ToolConfig("nmap", config={"scan_type": "full", "os_detection": True}),
+                    ToolConfig("whatweb"),
                 ],
             ),
             ScanPhase(
@@ -117,6 +125,7 @@ PROFILES: dict[str, ScanProfile] = {
                     ToolConfig("nuclei", config={"severities": ["critical", "high", "medium", "low"]}),
                     ToolConfig("nikto"),
                     ToolConfig("sslyze"),
+                    ToolConfig("testssl"),
                 ],
             ),
             ScanPhase(
@@ -124,6 +133,7 @@ PROFILES: dict[str, ScanProfile] = {
                 order=4,
                 tools=[
                     ToolConfig("ffuf", config={"wordlist": "directory-list-2.3-medium.txt"}),
+                    ToolConfig("gobuster", config={"wordlist": "/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt"}),
                 ],
             ),
             ScanPhase(
