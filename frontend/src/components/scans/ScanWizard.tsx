@@ -15,7 +15,10 @@ interface WizardState {
   subdomainEnum: boolean
   ipCidrTargets: string
   urlTargets: string
-  // Step 3
+  // Step 3 — Auto-discover toggles
+  autoDiscoverSubdomains: boolean
+  autoDiscoverTechnologies: boolean
+  autoDiscoverPorts: boolean
   knownSubdomains: string
   knownTechnologies: string[]
   knownPorts: string
@@ -96,13 +99,16 @@ const INITIAL_STATE: WizardState = {
   subdomainEnum: true,
   ipCidrTargets: '',
   urlTargets: '',
+  autoDiscoverSubdomains: true,
+  autoDiscoverTechnologies: true,
+  autoDiscoverPorts: true,
   knownSubdomains: '',
   knownTechnologies: [],
   knownPorts: '',
   contactEmails: '',
   testAccounts: '',
   intelNotes: '',
-  nmapPortRange: '',
+  nmapPortRange: 'top-1000',
   nmapSpeed: 'T3',
   nmapOsDetection: false,
   nucleiSeverities: ['critical', 'high', 'medium'],
@@ -175,6 +181,13 @@ export default function ScanWizard({ scopeTargets, onStart, onClose, loading }: 
       config.tools = state.customTools
     }
 
+    // Auto-discovery settings
+    config.auto_discover = {
+      subdomains: state.autoDiscoverSubdomains,
+      technologies: state.autoDiscoverTechnologies,
+      ports: state.autoDiscoverPorts,
+    }
+
     // Intel data
     config.intel = {
       known_subdomains: state.knownSubdomains.split('\n').filter(Boolean),
@@ -192,7 +205,8 @@ export default function ScanWizard({ scopeTargets, onStart, onClose, loading }: 
       config.tool_timeout_minutes = state.toolTimeout
 
       config.nmap = {
-        port_range: state.nmapPortRange || undefined,
+        port_range: state.nmapPortRange === 'top-1000' ? undefined : state.nmapPortRange || undefined,
+        all_ports: state.nmapPortRange === 'all',
         speed: state.nmapSpeed,
         os_detection: state.nmapOsDetection,
       }
@@ -491,6 +505,39 @@ function Step2Targets({ state, update, scopeTargets }: StepProps & { scopeTarget
   )
 }
 
+function AutoDiscoverToggle({ label, enabled, onToggle, children }: {
+  label: string
+  enabled: boolean
+  onToggle: (v: boolean) => void
+  children: React.ReactNode
+}) {
+  return (
+    <div className={clsx('rounded-lg border p-3 transition-colors', enabled ? 'border-green-500/30 bg-green-500/5' : 'border-dark-700')}>
+      <div className="flex items-center justify-between mb-2">
+        <label className="text-sm font-medium text-gray-400">{label}</label>
+        <button
+          type="button"
+          onClick={() => onToggle(!enabled)}
+          className={clsx(
+            'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
+            enabled
+              ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+              : 'bg-dark-700 text-gray-500 border border-dark-600'
+          )}
+        >
+          {enabled ? '🔍 Auto-Discover' : '✏️ Manual'}
+        </button>
+      </div>
+      {enabled ? (
+        <p className="text-xs text-green-400/70 italic">
+          Will be automatically discovered during scan. Add known values below to supplement.
+        </p>
+      ) : null}
+      <div className={clsx('mt-2', enabled && 'opacity-60')}>{children}</div>
+    </div>
+  )
+}
+
 function Step3Intel({ state, update }: StepProps) {
   const toggleTech = (tech: string) => {
     const current = state.knownTechnologies
@@ -504,21 +551,27 @@ function Step3Intel({ state, update }: StepProps) {
   return (
     <div className="space-y-4">
       <p className="text-xs text-gray-500">
-        Provide any known intelligence about the target to improve scan accuracy.
+        Fields set to <span className="text-green-400">Auto-Discover</span> will be automatically enumerated during the scan. You can still add known values to supplement discovery.
       </p>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-400 mb-1">Known Subdomains</label>
+      <AutoDiscoverToggle
+        label="Subdomains"
+        enabled={state.autoDiscoverSubdomains}
+        onToggle={v => update('autoDiscoverSubdomains', v)}
+      >
         <textarea
           value={state.knownSubdomains}
           onChange={e => update('knownSubdomains', e.target.value)}
-          className="input w-full h-20 font-mono text-sm"
-          placeholder={"api.example.com\nstaging.example.com"}
+          className="input w-full h-16 font-mono text-sm"
+          placeholder={state.autoDiscoverSubdomains ? "Optional: add known subdomains to include..." : "Enter subdomains manually (one per line)"}
         />
-      </div>
+      </AutoDiscoverToggle>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-400 mb-2">Known Technologies</label>
+      <AutoDiscoverToggle
+        label="Technologies"
+        enabled={state.autoDiscoverTechnologies}
+        onToggle={v => update('autoDiscoverTechnologies', v)}
+      >
         <div className="flex flex-wrap gap-2">
           {TECHNOLOGIES.map(tech => (
             <button
@@ -536,18 +589,22 @@ function Step3Intel({ state, update }: StepProps) {
             </button>
           ))}
         </div>
-      </div>
+      </AutoDiscoverToggle>
+
+      <AutoDiscoverToggle
+        label="Ports & Services"
+        enabled={state.autoDiscoverPorts}
+        onToggle={v => update('autoDiscoverPorts', v)}
+      >
+        <textarea
+          value={state.knownPorts}
+          onChange={e => update('knownPorts', e.target.value)}
+          className="input w-full h-16 font-mono text-sm"
+          placeholder={state.autoDiscoverPorts ? "Optional: add known ports to include..." : "Enter ports manually (e.g., 80 - HTTP)"}
+        />
+      </AutoDiscoverToggle>
 
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-400 mb-1">Known Ports/Services</label>
-          <textarea
-            value={state.knownPorts}
-            onChange={e => update('knownPorts', e.target.value)}
-            className="input w-full h-16 font-mono text-sm"
-            placeholder={"80 - HTTP\n443 - HTTPS\n8080 - Proxy"}
-          />
-        </div>
         <div>
           <label className="block text-sm font-medium text-gray-400 mb-1">Contact Emails / People</label>
           <textarea
@@ -557,16 +614,15 @@ function Step3Intel({ state, update }: StepProps) {
             placeholder={"admin@example.com\njohn.doe@company.com"}
           />
         </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-400 mb-1">Test Accounts / Credentials</label>
-        <textarea
-          value={state.testAccounts}
-          onChange={e => update('testAccounts', e.target.value)}
-          className="input w-full h-16 font-mono text-sm"
-          placeholder="testuser:Password123 (staging only)"
-        />
+        <div>
+          <label className="block text-sm font-medium text-gray-400 mb-1">Test Accounts / Credentials</label>
+          <textarea
+            value={state.testAccounts}
+            onChange={e => update('testAccounts', e.target.value)}
+            className="input w-full h-16 font-mono text-sm"
+            placeholder="testuser:Password123 (staging only)"
+          />
+        </div>
       </div>
 
       <div>
@@ -591,13 +647,29 @@ function Step4Advanced({ state, update }: StepProps) {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs text-gray-500 mb-1">Port Range</label>
-            <input
-              type="text"
-              value={state.nmapPortRange}
-              onChange={e => update('nmapPortRange', e.target.value)}
+            <select
+              value={['top-1000', 'all', 'top-100'].includes(state.nmapPortRange) ? state.nmapPortRange : 'custom'}
+              onChange={e => {
+                const v = e.target.value
+                if (v === 'custom') update('nmapPortRange', '')
+                else update('nmapPortRange', v)
+              }}
               className="input w-full text-sm"
-              placeholder="1-65535 or 22,80,443"
-            />
+            >
+              <option value="top-1000">Top 1000 (default)</option>
+              <option value="top-100">Top 100 (fast)</option>
+              <option value="all">All Ports (1-65535)</option>
+              <option value="custom">Custom Range...</option>
+            </select>
+            {!['top-1000', 'all', 'top-100'].includes(state.nmapPortRange) && (
+              <input
+                type="text"
+                value={state.nmapPortRange}
+                onChange={e => update('nmapPortRange', e.target.value)}
+                className="input w-full text-sm mt-1"
+                placeholder="22,80,443,8080 or 1-1024"
+              />
+            )}
           </div>
           <div>
             <label className="block text-xs text-gray-500 mb-1">Scan Speed</label>
@@ -805,6 +877,23 @@ function Step5Review({
             )}
           </div>
         </div>
+        {/* Auto-Discover Summary */}
+        {(state.autoDiscoverSubdomains || state.autoDiscoverTechnologies || state.autoDiscoverPorts) && (
+          <div className="p-3">
+            <span className="text-sm text-gray-500">Auto-Discovery</span>
+            <div className="flex flex-wrap gap-1 mt-1">
+              {state.autoDiscoverSubdomains && (
+                <span className="text-xs bg-green-500/10 text-green-400 px-2 py-0.5 rounded">🔍 Subdomains</span>
+              )}
+              {state.autoDiscoverTechnologies && (
+                <span className="text-xs bg-green-500/10 text-green-400 px-2 py-0.5 rounded">🔍 Technologies</span>
+              )}
+              {state.autoDiscoverPorts && (
+                <span className="text-xs bg-green-500/10 text-green-400 px-2 py-0.5 rounded">🔍 Ports & Services</span>
+              )}
+            </div>
+          </div>
+        )}
         {state.knownTechnologies.length > 0 && (
           <div className="p-3">
             <span className="text-sm text-gray-500">Known Technologies</span>
