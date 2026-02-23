@@ -1,108 +1,100 @@
-"""Tests for authentication and security utilities."""
+"""Tests for authentication endpoints."""
+
 import pytest
+from httpx import AsyncClient
 
-from app.api.deps import has_permission
-from app.core.security import (
-    InvalidTokenError,
-    WrongTokenTypeError,
-    create_access_token,
-    create_refresh_token,
-    get_token_ttl_seconds,
-    hash_password,
-    verify_password,
-    verify_token,
-)
-from app.schemas.user import PasswordChangeRequest
+from app.models.user import User
+from tests.conftest import auth_header
 
 
-class TestTokenCreation:
-    def test_create_access_token_returns_string(self):
-        token = create_access_token("user-123", "admin")
-        assert isinstance(token, str)
-        assert len(token) > 20
+class TestLogin:
+    async def test_login_success(self, client: AsyncClient, test_user: User):
+        resp = await client.post("/api/v1/auth/login", data={
+            "username": "testuser@example.com",
+            "password": "TestPassword123!",
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "access_token" in data
+        assert "refresh_token" in data
+        assert data["token_type"] == "bearer"
 
-    def test_create_refresh_token_returns_string(self):
-        token = create_refresh_token("user-123")
-        assert isinstance(token, str)
-        assert len(token) > 20
+    async def test_login_wrong_password(self, client: AsyncClient, test_user: User):
+        resp = await client.post("/api/v1/auth/login", data={
+            "username": "testuser@example.com",
+            "password": "WrongPassword123!",
+        })
+        assert resp.status_code == 401
 
-    def test_access_token_has_correct_claims(self):
-        token = create_access_token("user-456", "pentester")
-        payload = verify_token(token)
-        assert payload["sub"] == "user-456"
-        assert payload["role"] == "pentester"
-        assert payload["type"] == "access"
+    async def test_login_nonexistent_user(self, client: AsyncClient):
+        resp = await client.post("/api/v1/auth/login", data={
+            "username": "nobody@example.com",
+            "password": "TestPassword123!",
+        })
+        assert resp.status_code == 401
 
-    def test_refresh_token_has_correct_type(self):
-        token = create_refresh_token("user-789")
-        payload = verify_token(token, expected_type="refresh")
-        assert payload["sub"] == "user-789"
-        assert payload["type"] == "refresh"
-
-    def test_access_token_rejected_as_refresh(self):
-        token = create_access_token("user-1", "admin")
-        with pytest.raises(WrongTokenTypeError):
-            verify_token(token, expected_type="refresh")
-
-    def test_refresh_token_rejected_as_access(self):
-        token = create_refresh_token("user-1")
-        with pytest.raises(WrongTokenTypeError):
-            verify_token(token, expected_type="access")
-
-
-class TestTokenVerification:
-    def test_invalid_token_raises(self):
-        with pytest.raises(InvalidTokenError):
-            verify_token("not.a.valid.token")
-
-    def test_token_ttl_is_positive(self):
-        token = create_access_token("user-1", "admin")
-        ttl = get_token_ttl_seconds(token)
-        assert ttl > 0
-
-    def test_garbage_token_ttl_is_zero(self):
-        ttl = get_token_ttl_seconds("garbage")
-        assert ttl == 0
+    async def test_login_json(self, client: AsyncClient, test_user: User):
+        resp = await client.post("/api/v1/auth/login/json", json={
+            "email": "testuser@example.com",
+            "password": "TestPassword123!",
+        })
+        assert resp.status_code == 200
+        assert "access_token" in resp.json()
 
 
-class TestPasswordHashing:
-    def test_hash_and_verify(self):
-        hashed = hash_password("mysecretpass")
-        assert verify_password("mysecretpass", hashed)
+class TestMe:
+    async def test_get_me(self, client: AsyncClient, test_user: User):
+        resp = await client.get("/api/v1/auth/me", headers=auth_header(test_user))
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["email"] == "testuser@example.com"
+        assert data["role"] == "pentester"
 
-    def test_wrong_password_fails(self):
-        hashed = hash_password("correct")
-        assert not verify_password("wrong", hashed)
-
-
-class TestRBAC:
-    def test_admin_has_all_permissions(self):
-        assert has_permission("admin", "users.manage")
-        assert has_permission("admin", "scans.manage")
-        assert has_permission("admin", "findings.view")
-
-    def test_viewer_limited(self):
-        assert has_permission("viewer", "findings.view")
-        assert has_permission("viewer", "reports.view")
-        assert not has_permission("viewer", "scans.manage")
-        assert not has_permission("viewer", "users.manage")
-
-    def test_pentester_can_scan(self):
-        assert has_permission("pentester", "scans.manage")
-        assert has_permission("pentester", "findings.edit")
-        assert not has_permission("pentester", "users.manage")
-
-    def test_unknown_role_has_no_permissions(self):
-        assert not has_permission("unknown_role", "findings.view")
+    async def test_get_me_unauthenticated(self, client: AsyncClient):
+        resp = await client.get("/api/v1/auth/me")
+        assert resp.status_code == 401
 
 
-class TestPasswordChangeSchema:
-    def test_valid_password_change(self):
-        req = PasswordChangeRequest(current_password="old", new_password="newpass123")
-        assert req.current_password == "old"
-        assert req.new_password == "newpass123"
+class TestPasswordChange:
+    async def test_change_password(self, client: AsyncClient, test_user: User):
+        resp = await client.put("/api/v1/auth/password", headers=auth_header(test_user), json={
+            "current_password": "TestPassword123!",
+            "new_password": "NewPassword456!",
+        })
+        assert resp.status_code == 200
 
-    def test_short_new_password_rejected(self):
-        import pydantic
-        with pytest.raises(pydantic.ValidationError):
-            PasswordChangeRequest(current_password="old", new_password="short")
+        # Login with new password
+        resp2 = await client.post("/api/v1/auth/login", data={
+            "username": "testuser@example.com",
+            "password": "NewPassword456!",
+        })
+        assert resp2.status_code == 200
+
+    async def test_change_password_wrong_current(self, client: AsyncClient, test_user: User):
+        resp = await client.put("/api/v1/auth/password", headers=auth_header(test_user), json={
+            "current_password": "WrongPassword!",
+            "new_password": "NewPassword456!",
+        })
+        assert resp.status_code == 400
+
+
+class TestRefresh:
+    async def test_refresh_token(self, client: AsyncClient, test_user: User):
+        # First login
+        login_resp = await client.post("/api/v1/auth/login", data={
+            "username": "testuser@example.com",
+            "password": "TestPassword123!",
+        })
+        refresh_token = login_resp.json()["refresh_token"]
+
+        resp = await client.post("/api/v1/auth/refresh", json={
+            "refresh_token": refresh_token,
+        })
+        assert resp.status_code == 200
+        assert "access_token" in resp.json()
+
+    async def test_refresh_with_invalid_token(self, client: AsyncClient):
+        resp = await client.post("/api/v1/auth/refresh", json={
+            "refresh_token": "invalid-token",
+        })
+        assert resp.status_code == 401

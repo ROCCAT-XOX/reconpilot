@@ -24,8 +24,14 @@ migrate-create: ## Create new migration (usage: make migrate-create MSG="descrip
 seed: ## Seed database with initial data
 	docker compose exec backend python scripts/seed_db.py
 
-test: ## Run backend tests
+test: ## Run backend tests (local)
+	cd backend && .venv/bin/python -m pytest tests/ -v
+
+test-docker: ## Run backend tests (via Docker)
 	docker compose exec backend pytest -v
+
+test-cov: ## Run backend tests with coverage
+	cd backend && .venv/bin/python -m pytest tests/ -v --cov=app --cov-report=term-missing
 
 lint: ## Run linters
 	cd backend && ruff check .
