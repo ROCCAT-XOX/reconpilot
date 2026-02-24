@@ -81,9 +81,20 @@ export default function Findings() {
 
         <div className="lg:col-span-3 space-y-3">
           {isLoading ? (
-            <div className="bg-dark-900 rounded-xl border border-dark-700 p-12 text-center text-gray-500">Loading...</div>
+            <div className="space-y-3">
+              {[1,2,3].map(i => (
+                <div key={i} className="bg-dark-900 rounded-xl border border-dark-700 p-4 animate-pulse">
+                  <div className="h-4 bg-dark-700 rounded w-1/2 mb-2" />
+                  <div className="h-3 bg-dark-700 rounded w-3/4" />
+                </div>
+              ))}
+            </div>
           ) : findings.length === 0 ? (
-            <div className="bg-dark-900 rounded-xl border border-dark-700 p-12 text-center text-gray-500">No findings found.</div>
+            <div className="bg-dark-900 rounded-xl border border-dark-700 p-12 text-center">
+              <div className="text-4xl mb-3">🛡️</div>
+              <p className="text-gray-400">No findings found</p>
+              <p className="text-gray-600 text-xs mt-1">Run a scan to discover vulnerabilities</p>
+            </div>
           ) : (
             findings.map((f: Finding) => <FindingCard key={f.id} finding={f} onClick={() => navigate(`/findings/${f.id}`)} />)
           )}

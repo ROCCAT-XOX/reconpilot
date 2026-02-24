@@ -12,6 +12,7 @@ from app.orchestrator.chain_logic import ChainLogicEngine
 from app.orchestrator.profiles import ScanProfile
 from app.services.finding_service import compute_finding_fingerprint
 from app.services.scope_validator import ScopeValidator
+from app.orchestrator.auto_discover import AutoDiscoverService
 from app.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,7 @@ class PipelineEngine:
         self.chain_engine = chain_engine
         self.events = event_manager
         self.db = db_session
+        self.auto_discover = AutoDiscoverService(tool_registry)
         self._cancelled: set[str] = set()
         self._paused: set[str] = set()
 
@@ -91,6 +93,30 @@ class PipelineEngine:
         }
 
         try:
+            # --- Auto-Discovery Phase ---
+            ad_config = self.auto_discover.parse_config(custom_config or {})
+            if any([ad_config.subdomains, ad_config.technologies, ad_config.ports]):
+                await self.events.emit(scan_id, "autodiscover.started", {})
+                ad_result = await self.auto_discover.run(
+                    targets=targets,
+                    config=ad_config,
+                    scope_targets=scope_targets,
+                )
+                discovered_targets["domains"].update(ad_result.subdomains)
+                discovered_targets["urls"].update(ad_result.urls)
+                discovered_targets["hosts"].update(ad_result.hosts)
+
+                # Override nmap config for full port scan if requested
+                if ad_result.full_port_scan and custom_config is not None:
+                    custom_config.setdefault("scan_type", "full")
+
+                await self.events.emit(scan_id, "autodiscover.completed", {
+                    "subdomains": len(ad_result.subdomains),
+                    "urls": len(ad_result.urls),
+                    "technologies": len(ad_result.technologies),
+                    "full_port_scan": ad_result.full_port_scan,
+                })
+
             for phase in sorted(profile.phases, key=lambda p: p.order):
                 # Check cancellation
                 if scan_id_str in self._cancelled:

@@ -1,10 +1,13 @@
+import { useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useScan, useScanJobs } from '../hooks/useScans'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { StatusBadge } from '../components/common/StatusBadge'
+import ConnectionIndicator from '../components/common/ConnectionStatus'
 import ScanProgress from '../components/scans/ScanProgress'
 import ScanTimeline from '../components/scans/ScanTimeline'
 import { scansApi } from '../api/scans'
+import { useScanStore } from '../store/scanStore'
 import { formatDateTime, formatDuration } from '../utils/formatters'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
@@ -15,7 +18,30 @@ export default function ScanView() {
 
   const { data: scan } = useScan(id)
   const { data: jobs } = useScanJobs(id)
-  const { events } = useWebSocket(scan?.project_id)
+  const { events, connectionStatus, subscribe } = useWebSocket(scan?.project_id)
+  const setActiveScan = useScanStore((s) => s.setActiveScan)
+  const resetScanState = useScanStore((s) => s.resetScanState)
+
+  // Subscribe to scan-specific events when connected
+  useEffect(() => {
+    if (id && connectionStatus === 'connected') {
+      subscribe(id)
+      setActiveScan(id)
+    }
+    return () => {
+      setActiveScan(null)
+      resetScanState()
+    }
+  }, [id, connectionStatus, subscribe, setActiveScan, resetScanState])
+
+  // Refetch data when scan status changes via WS
+  const scanStatus = useScanStore((s) => s.scanStatus)
+  useEffect(() => {
+    if (scanStatus) {
+      queryClient.invalidateQueries({ queryKey: ['scan', id] })
+      queryClient.invalidateQueries({ queryKey: ['scan-jobs', id] })
+    }
+  }, [scanStatus, queryClient, id])
 
   const pauseMutation = useMutation({
     mutationFn: () => scansApi.pause(id!),
@@ -32,7 +58,16 @@ export default function ScanView() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['scan', id] }),
   })
 
-  if (!scan) return <div className="text-center py-12 text-gray-500">Loading...</div>
+  if (!scan) return (
+    <div className="space-y-6 animate-pulse">
+      <div className="h-8 bg-dark-700 rounded w-1/3" />
+      <div className="h-4 bg-dark-700 rounded w-1/4" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 card"><div className="h-60 bg-dark-700 rounded" /></div>
+        <div className="card"><div className="h-40 bg-dark-700 rounded" /></div>
+      </div>
+    </div>
+  )
 
   const duration = scan.started_at && scan.completed_at
     ? Math.round((new Date(scan.completed_at).getTime() - new Date(scan.started_at).getTime()) / 1000)
@@ -47,6 +82,7 @@ export default function ScanView() {
             <StatusBadge status={scan.status} />
             <span>Profile: {scan.profile}</span>
             {duration && <span>Duration: {formatDuration(duration)}</span>}
+            <ConnectionIndicator status={connectionStatus} />
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -95,6 +131,7 @@ export default function ScanView() {
                 <div key={i} className="text-gray-500">
                   <span className="text-primary-400">{ev.event}</span>
                   {ev.data?.tool && <span className="text-gray-400"> [{ev.data.tool}]</span>}
+                  {ev.data?.message && <span className="text-gray-500"> {ev.data.message}</span>}
                 </div>
               ))}
               {events.length === 0 && <p className="text-gray-600">No events yet</p>}

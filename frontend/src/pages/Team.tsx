@@ -42,7 +42,17 @@ export default function Team() {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12 text-gray-500">Loading...</div>
+        <div className="space-y-3">
+          {[1,2,3].map(i => (
+            <div key={i} className="card animate-pulse flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-dark-700" />
+              <div className="flex-1">
+                <div className="h-4 bg-dark-700 rounded w-1/3 mb-2" />
+                <div className="h-3 bg-dark-700 rounded w-1/4" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="space-y-3">
           {users?.map((user: User) => (

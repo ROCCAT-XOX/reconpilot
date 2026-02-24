@@ -1,4 +1,6 @@
 import { useAuth } from '../../hooks/useAuth'
+import { useScanStore } from '../../store/scanStore'
+import ConnectionIndicator from '../common/ConnectionStatus'
 
 interface HeaderProps {
   onMenuToggle: () => void
@@ -6,6 +8,8 @@ interface HeaderProps {
 
 export default function Header({ onMenuToggle }: HeaderProps) {
   const { user, logout } = useAuth()
+  const connectionStatus = useScanStore((s) => s.connectionStatus)
+  const activeScanId = useScanStore((s) => s.activeScanId)
 
   return (
     <header className="h-14 bg-dark-950 border-b border-dark-700 flex items-center justify-between px-4 md:px-6">
@@ -19,6 +23,9 @@ export default function Header({ onMenuToggle }: HeaderProps) {
         <span className="md:hidden text-sm font-bold text-primary-400">⚒️ ReconForge</span>
       </div>
       <div className="flex items-center gap-3 md:gap-4">
+        {activeScanId && (
+          <ConnectionIndicator status={connectionStatus} />
+        )}
         {user && (
           <>
             <span className="text-sm text-gray-400 hidden sm:inline">{user.full_name}</span>

@@ -52,11 +52,19 @@ export default function Scans() {
       </div>
 
       {isLoading ? (
-        <div className="text-gray-400">Loading scans...</div>
+        <div className="space-y-3">
+          {[1,2,3].map(i => (
+            <div key={i} className="bg-dark-800 rounded-lg p-4 border border-dark-700 animate-pulse">
+              <div className="h-5 bg-dark-700 rounded w-1/3 mb-2" />
+              <div className="h-4 bg-dark-700 rounded w-2/3" />
+            </div>
+          ))}
+        </div>
       ) : !allScans || allScans.length === 0 ? (
-        <div className="bg-dark-800 rounded-lg p-8 text-center">
-          <p className="text-gray-400 text-lg">No scans yet.</p>
-          <p className="text-gray-500 mt-2">Create a project and start a scan to see results here.</p>
+        <div className="bg-dark-800 rounded-lg p-8 text-center border border-dark-700">
+          <div className="text-4xl mb-3">📡</div>
+          <p className="text-gray-400 text-lg">No scans yet</p>
+          <p className="text-gray-500 text-sm mt-2">Create a project and start a scan to see results here.</p>
         </div>
       ) : (
         <div className="space-y-3">

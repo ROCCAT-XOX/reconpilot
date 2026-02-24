@@ -42,7 +42,16 @@ export default function FindingDetail() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['finding', id] }),
   })
 
-  if (!finding) return <div className="text-center py-12 text-gray-500">Loading...</div>
+  if (!finding) return (
+    <div className="space-y-6 animate-pulse">
+      <div className="h-6 bg-dark-700 rounded w-1/4" />
+      <div className="h-8 bg-dark-700 rounded w-2/3" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 card"><div className="h-60 bg-dark-700 rounded" /></div>
+        <div className="card"><div className="h-40 bg-dark-700 rounded" /></div>
+      </div>
+    </div>
+  )
 
   return (
     <div className="space-y-6">

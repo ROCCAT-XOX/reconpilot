@@ -31,6 +31,8 @@ export default function Dashboard() {
     queryFn: () => apiClient.get('/projects/', { params: { per_page: 100 } }).then(r => r.data.items),
   })
 
+  const isLoading = !stats
+
   const statCards = [
     { label: 'Projects', value: stats?.projects_count ?? '—', icon: '📁', color: 'text-blue-400' },
     { label: 'Active Scans', value: stats?.active_scans ?? '—', icon: '📡', color: 'text-green-400' },

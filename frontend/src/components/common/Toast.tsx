@@ -19,13 +19,16 @@ function ToastItem({ toast }: { toast: ToastType }) {
 
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${colorMap[toast.type]} shadow-lg backdrop-blur-sm animate-slide-in`}
+      className={`flex items-start gap-3 px-4 py-3 rounded-lg border ${colorMap[toast.type]} shadow-lg backdrop-blur-sm animate-slide-in min-w-[280px] max-w-[90vw] sm:max-w-sm`}
     >
-      <span className="text-lg">{iconMap[toast.type]}</span>
-      <span className="text-sm flex-1">{toast.message}</span>
+      <span className="text-lg mt-0.5 shrink-0">{iconMap[toast.type]}</span>
+      <div className="flex-1 min-w-0">
+        {toast.title && <div className="font-semibold text-sm mb-0.5">{toast.title}</div>}
+        <span className="text-sm break-words">{toast.message}</span>
+      </div>
       <button
         onClick={() => removeToast(toast.id)}
-        className="text-gray-400 hover:text-white text-sm"
+        className="text-gray-400 hover:text-white text-sm shrink-0 min-w-[28px] min-h-[28px] flex items-center justify-center"
       >
         ✕
       </button>
@@ -39,7 +42,7 @@ export function ToastContainer() {
   if (toasts.length === 0) return null
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
+    <div className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 flex flex-col gap-2 items-end">
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} />
       ))}

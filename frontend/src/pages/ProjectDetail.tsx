@@ -74,7 +74,16 @@ export default function ProjectDetail() {
     },
   })
 
-  if (!project) return <div className="text-center py-12 text-gray-500">Loading...</div>
+  if (!project) return (
+    <div className="space-y-6 animate-pulse">
+      <div className="h-8 bg-dark-700 rounded w-1/3" />
+      <div className="h-4 bg-dark-700 rounded w-1/4" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card"><div className="h-40 bg-dark-700 rounded" /></div>
+        <div className="card"><div className="h-40 bg-dark-700 rounded" /></div>
+      </div>
+    </div>
+  )
 
   const includedScope = scope?.filter((s: any) => !s.is_excluded) || []
   const excludedScope = scope?.filter((s: any) => s.is_excluded) || []

@@ -53,7 +53,15 @@ export default function Projects() {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12 text-gray-500">Loading...</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1,2,3].map(i => (
+            <div key={i} className="card animate-pulse">
+              <div className="h-5 bg-dark-700 rounded w-1/2 mb-3" />
+              <div className="h-4 bg-dark-700 rounded w-1/3 mb-3" />
+              <div className="h-3 bg-dark-700 rounded w-2/3" />
+            </div>
+          ))}
+        </div>
       ) : projects && projects.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map((project: Project) => (
