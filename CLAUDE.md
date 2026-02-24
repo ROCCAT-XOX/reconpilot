@@ -1,59 +1,90 @@
-# CLAUDE.md — ReconForge Project Guide
+# CLAUDE.md
 
-## What is this?
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-ReconForge is a **Reconnaissance Orchestration Platform** for pentesting teams. It orchestrates 18+ open-source security tools in automated pipelines, aggregates results in a central database, and delivers prioritized findings.
+## Project Overview
+
+ReconForge is a **Reconnaissance Orchestration Platform** for pentesting teams. It orchestrates 18+ open-source security tools in automated pipelines, aggregates results in a central database, and delivers prioritized findings. Internal/proprietary.
 
 ## Tech Stack
 
 - **Backend:** Python 3.12, FastAPI, SQLAlchemy 2.0 (async), Celery, Alembic
-- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, Zustand (state)
+- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, TanStack Query, Zustand
 - **Database:** PostgreSQL 16 (async via asyncpg), Redis 7 (Celery broker + cache)
 - **Infra:** Docker Compose, Nginx reverse proxy, GitHub Actions CI/CD
 - **Registry:** `registry.arcadia-capitals.com/reconpilot`
 - **Deployment:** k3s cluster, Namespace `flow`, NodePort 30811
 
-## Project Structure
+## Commands
 
-```
-reconforge/
-├── backend/
-│   ├── app/
-│   │   ├── api/v1/          # REST endpoints (auth, projects, scans, findings, dashboard, reports, scope, users)
-│   │   ├── api/middleware/   # Audit logging, rate limiting
-│   │   ├── api/deps.py      # Dependency injection (auth, DB session)
-│   │   ├── core/            # database.py, security.py, redis.py, events.py, types.py
-│   │   ├── models/          # SQLAlchemy models (user, project, scan, finding, scope, report, audit_log)
-│   │   ├── services/        # Business logic (finding_service, scope_validator)
-│   │   ├── orchestrator/    # Scan engine, chain_logic, profiles
-│   │   ├── tools/           # Security tool wrappers (see below)
-│   │   ├── reporting/       # Report generation
-│   │   ├── config.py        # Pydantic settings
-│   │   └── main.py          # FastAPI app entry point
-│   ├── tests/               # pytest tests (84+ tests)
-│   ├── alembic.ini
-│   └── pyproject.toml
-├── frontend/
-│   ├── src/
-│   │   ├── pages/           # Dashboard, Projects, Scans, Findings, Reports, Team, Settings, Login
-│   │   ├── components/      # layout/, common/, scans/, findings/, network/
-│   │   ├── store/           # Zustand stores (auth, scan, notification)
-│   │   └── types/           # TypeScript interfaces
-│   ├── vite.config.ts
-│   └── package.json
-├── nginx/                   # Reverse proxy configs
-├── scripts/                 # backup.sh, docker-entrypoint.sh, seed_db.py
-├── docker-compose.yml       # Production
-├── docker-compose.dev.yml   # Development overlay
-├── k3s.yaml                 # Kubernetes manifest
-├── Makefile                 # Common commands
-├── .env.example             # Environment template
-└── ARCHITECTURE.md          # Full architecture document
+### Development
+```bash
+make dev                                        # Full stack Docker (nginx:8080, backend:8000, frontend:5173, postgres:5432, redis:6379)
+cd backend && uvicorn app.main:app --reload     # Backend only
+cd frontend && npm run dev                      # Frontend only (port 5173)
 ```
 
-## Security Tools (Wrappers)
+### Testing
+```bash
+cd backend && .venv/bin/python -m pytest tests/ -v                              # All backend tests
+cd backend && .venv/bin/python -m pytest tests/test_scans.py -v                 # Single test file
+cd backend && .venv/bin/python -m pytest tests/test_scans.py::TestScanCRUD -v   # Single test class
+cd backend && .venv/bin/python -m pytest tests/ -v --cov=app --cov-report=term-missing  # With coverage
+make test-docker                                                                # Via Docker
+cd frontend && npm run test                                                     # Frontend tests (vitest)
+```
 
-All tool wrappers inherit from `backend/app/tools/base.py`:
+Tests use **in-memory SQLite** via aiosqlite (not PostgreSQL). The conftest overrides `DATABASE_URL`, `SECRET_KEY`, `REDIS_URL`, and `ENVIRONMENT`. All tests are async (`asyncio_mode = "auto"`).
+
+### Linting & Formatting
+```bash
+cd backend && ruff check .       # Backend lint (line-length 100, py312 target)
+cd backend && ruff format .      # Backend format
+cd frontend && npm run lint      # Frontend lint (eslint)
+cd frontend && npm run format    # Frontend format (prettier)
+```
+
+### Database
+```bash
+make migrate                                                    # Run Alembic migrations
+make migrate-create MSG="description"                           # Create new migration
+make seed                                                       # Seed initial data
+make db-shell                                                   # psql into PostgreSQL
+```
+
+### Install
+```bash
+cd backend && pip install -e ".[dev]"   # Backend deps (Python 3.12+)
+cd frontend && npm install              # Frontend deps
+```
+
+## Architecture
+
+**Monorepo** with `backend/` (Python FastAPI) and `frontend/` (React TypeScript Vite).
+
+### Backend (`backend/app/`)
+
+- **Entry point**: `app/main.py` — mounts all routers under `/api/v1/`
+- **Health endpoint**: `/health` (NOT `/api/v1/health`)
+- **Config**: `app/config.py` — Pydantic BaseSettings, requires `DATABASE_URL` and `SECRET_KEY`
+- **API routes**: `app/api/v1/router.py` — auth, dashboard, users, projects, scope, scans, findings, reports, websocket
+- **Auth**: JWT (HS256) with access (30min) + refresh (7day) tokens, bcrypt passwords, Redis-based token blacklist
+- **RBAC**: 4 roles (admin > lead > pentester > viewer) with permission sets in `app/api/deps.py`
+- **DI shortcuts** in `app/api/deps.py`: `CurrentUser`, `AdminUser`, `LeadOrAdmin`, `PentesterOrAbove`, `DB`, `Pagination`
+- **Middleware**: Rate limiting (Redis, fail-open) → Audit logging (all POST/PUT/DELETE to `audit_log` table)
+- **CORS**: `redirect_slashes=False` — frontend API calls must be slash-aware
+
+### Scan Orchestration (core domain logic)
+
+- **Tool wrappers** (`app/tools/`): Each tool extends `BaseToolWrapper` with `build_command()` and `parse_output()`. Registered in `tool_registry` dict. Execute via `asyncio.create_subprocess_exec()`.
+- **Profiles** (`app/orchestrator/profiles.py`): quick/standard/deep/custom — define ordered phases with tool configs
+- **Pipeline engine** (`app/orchestrator/engine.py`): Runs phases sequentially, tools within a phase in parallel. Validates scope, saves ScanJob/Finding records, emits WebSocket events.
+- **Chain logic** (`app/orchestrator/chain_logic.py`): Rule-based auto-discovery — feeds tool outputs as new targets into subsequent phases (e.g., subfinder→httpx→nuclei)
+- **Scan dispatch** (`app/api/v1/scans.py`): Tries Celery first, falls back to asyncio background task if Redis unavailable
+
+### Security Tools
+
+All wrappers inherit from `backend/app/tools/base.py`, registered in `registry.py`:
 
 | Category | Tools |
 |----------|-------|
@@ -62,56 +93,23 @@ All tool wrappers inherit from `backend/app/tools/base.py`:
 | **Web Analysis** | SSLyze, testssl, WhatWeb |
 | **Exploitation** | SQLMap |
 
-Tool registry: `backend/app/tools/registry.py`
+### Database
 
-## Development Commands
+- **Models** (`app/models/`): User, Project, ProjectMember, ScopeTarget, Scan, ScanJob, Finding, FindingComment, AuditLog, Report, ScanComparison
+- **Custom types** (`app/core/types.py`): `GUID`, `JSON`, `INET` — PostgreSQL-native in prod (UUID, JSONB, INET), SQLite-compatible fallbacks for tests
+- **Migrations**: Alembic async in `backend/alembic/`
+- **Finding deduplication**: SHA-256 fingerprint over (host, port, url, cve, cwe, title)
 
-```bash
-# Full stack (Docker)
-make dev                    # Start dev environment
-make up                     # Start production
-make down                   # Stop all
+### Frontend (`frontend/src/`)
 
-# Database
-make migrate                # Run Alembic migrations
-make migrate-create MSG="x" # Create new migration
-make seed                   # Seed initial data
+- **Routing**: React Router 6 in `App.tsx` — `/dashboard`, `/projects/:id`, `/scans/:id`, `/findings/:id`, `/reports`, `/team`, `/settings`
+- **API client** (`api/client.ts`): Axios with auto Bearer token injection and transparent 401 refresh
+- **State**: Zustand stores (`store/`) for auth, notifications, scans. TanStack Query for server state via `hooks/`
+- **WebSocket**: Real-time scan progress updates (`api/websocket.ts`, `hooks/useWebSocket.ts`)
+- **Vite dev proxy**: `/api` → `http://localhost:8000`
+- **Mobile**: Fully responsive (all pages)
 
-# Testing
-make test                   # Backend tests (local venv)
-make test-docker            # Backend tests (Docker)
-make test-cov               # Tests with coverage
-
-# Code Quality
-make lint                   # Ruff (backend) + ESLint (frontend)
-make format                 # Auto-format
-
-# Shells
-make backend-shell          # Bash into backend container
-make db-shell               # psql into PostgreSQL
-make redis-cli              # Redis CLI
-```
-
-## Backend Specifics
-
-- **Entry point:** `backend/app/main.py`
-- **API prefix:** `/api/v1` (configured via `API_V1_PREFIX`)
-- **Health endpoint:** `/health` (NOT `/api/v1/health`)
-- **Router:** `backend/app/api/v1/router.py` registers all endpoint routers
-- **WebSocket:** `backend/app/api/v1/websocket.py` for live scan updates
-- **Auth:** JWT-based, `python-jose` + `passlib[bcrypt]`
-- **CORS:** `redirect_slashes=False`, `allow_origins=*` (development)
-- **Async:** Full async stack — asyncpg, SQLAlchemy async sessions
-
-## Frontend Specifics
-
-- **Dev server:** `npm run dev` (Vite, port 5173)
-- **State management:** Zustand (`src/store/`)
-- **Routing:** React Router
-- **API calls:** Always include trailing slash awareness — backend has `redirect_slashes=False`
-- **Mobile:** Fully responsive (all pages)
-
-## CI/CD Pipeline (GitHub Actions)
+## CI/CD Pipeline
 
 `.github/workflows/deploy.yml` — triggered on push to `main`:
 
@@ -129,49 +127,29 @@ Copy `.env.example` → `.env`. Key variables:
 - `ENVIRONMENT` — `development` | `testing` | `production`
 - Optional: `WPSCAN_API_TOKEN`, `SHODAN_API_KEY`, `CENSYS_API_ID/SECRET`, `VIRUSTOTAL_API_KEY`
 
-## Database Backup
+## Key Patterns
 
-Script: `scripts/backup-db.sh` — pg_dump with gzip compression and 7-day rotation.
-
-```bash
-# Manual run (inside Docker network)
-docker compose exec postgres bash -c 'PGPASSWORD=$POSTGRES_PASSWORD /scripts/backup-db.sh'
-
-# Via cron (host-level)
-0 2 * * * cd /path/to/reconforge && docker compose exec -T postgres pg_dump -U reconforge reconforge | gzip > /backups/reconforge_$(date +\%Y\%m\%d).sql.gz
-
-# Environment variables:
-#   BACKUP_DIR (default: /backups)
-#   RETENTION_DAYS (default: 7)
-#   PGHOST, PGPORT, PGUSER, PGDATABASE
-```
-
-## Known Issues & TODOs
-
-See `TODO.md` for the full roadmap. Key items:
-- Scan execution: Celery tasks create DB entries but tool dispatch needs wiring
-- Auto-Discover backend logic not yet implemented
-- Reporting engine (Epic 8) was descoped
-- CI needs post-deploy smoke tests
+- **Fail-open design**: Redis failures (rate limiting, token blacklist) log warnings but don't block requests
+- **Scope enforcement**: All scan targets validated against authorized scope before execution — critical for legal compliance
+- **Ruff config**: Extensive per-file-ignores in `pyproject.toml` (subprocess calls in tools, asserts in tests, etc.)
+- **Test fixtures**: `conftest.py` provides `client`, `db_session`, `test_user`/`admin_user`/`viewer_user`, `test_project`, `test_scope`, `test_scan`, `test_finding`. Use `auth_header(user)` helper for authenticated requests.
 
 ## Code Conventions
 
 - **Python:** Ruff for linting/formatting, type hints everywhere, async-first
 - **TypeScript:** ESLint + Prettier, strict mode, interfaces in `src/types/`
-- **Git:** Direct pushes to `main`, descriptive commit messages with `feat:/fix:/docs:` prefixes
-- **Testing:** pytest + pytest-asyncio, conftest.py provides fixtures (test DB, test client, auth tokens)
+- **Git:** Direct pushes to `main`, descriptive commit messages with `feat:`/`fix:`/`docs:` prefixes
 
-## Architecture Decisions
+## How to Add Things
 
-- **Monorepo:** Single repo for backend + frontend + infra — simplifies CI/CD
-- **Async-first:** FastAPI + asyncpg for high concurrency during parallel scans
-- **Tool isolation:** Each tool wrapper is independent, registered via `registry.py`
-- **Chain logic:** `orchestrator/chain_logic.py` handles intelligent tool chaining (e.g., subfinder → httpx → nuclei)
-- **Scan profiles:** Predefined scan configurations in `orchestrator/profiles.py`
+- **New API endpoint**: Add router in `backend/app/api/v1/`, register in `router.py`
+- **New tool**: Create wrapper in `backend/app/tools/<category>/`, register in `registry.py`
+- **New page**: Create in `frontend/src/pages/`, add route in `App.tsx`
+- **New model**: Create in `backend/app/models/`, import in `__init__.py`, create Alembic migration
 
-## Useful Paths
+## Known Issues
 
-- API router registration: `backend/app/api/v1/router.py`
-- Add new tool: Create wrapper in `backend/app/tools/<category>/`, register in `registry.py`
-- Add new page: Create in `frontend/src/pages/`, add route in `App.tsx`
-- Add new model: Create in `backend/app/models/`, import in `__init__.py`, create Alembic migration
+See `TODO.md` for the full roadmap. Key items:
+- Scan execution: Celery tasks create DB entries but tool dispatch needs wiring
+- Reporting engine (Epic 8) was descoped
+- CI needs post-deploy smoke tests
