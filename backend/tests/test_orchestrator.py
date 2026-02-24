@@ -1,13 +1,10 @@
 """Tests for orchestrator: chain logic, pipeline engine, scope enforcement."""
 
-import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from app.orchestrator.chain_logic import ChainLogicEngine
 from app.orchestrator.engine import PipelineEngine, ScopeViolationError
-from app.orchestrator.profiles import get_profile
 from app.services.scope_validator import ScopeValidator
 from app.tools.base import ToolResult, ToolStatus
 

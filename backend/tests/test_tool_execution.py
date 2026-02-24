@@ -3,25 +3,21 @@
 All subprocess calls are mocked — no real tools are invoked.
 """
 
-import asyncio
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
-import pytest
-
-from app.tools.base import BaseToolWrapper, ToolCategory, ToolResult, ToolStatus
-from app.tools.scanning.nmap import NmapWrapper
-from app.tools.scanning.nuclei import NucleiWrapper
-from app.tools.recon.subfinder import SubfinderWrapper
+from app.tools.base import ToolStatus
+from app.tools.exploitation.sqlmap import SqlmapWrapper
+from app.tools.recon.amass import AmassWrapper
 from app.tools.recon.httpx import HttpxWrapper
+from app.tools.recon.subfinder import SubfinderWrapper
 from app.tools.scanning.ffuf import FfufWrapper
 from app.tools.scanning.gobuster import GobusterWrapper
 from app.tools.scanning.nikto import NiktoWrapper
-from app.tools.web_analysis.whatweb import WhatWebWrapper
+from app.tools.scanning.nmap import NmapWrapper
+from app.tools.scanning.nuclei import NucleiWrapper
 from app.tools.web_analysis.testssl import TestsslWrapper
-from app.tools.exploitation.sqlmap import SqlmapWrapper
-from app.tools.recon.amass import AmassWrapper
-
+from app.tools.web_analysis.whatweb import WhatWebWrapper
 
 # === Helper to mock subprocess ===
 
@@ -123,7 +119,7 @@ class TestNmapExecution:
     async def test_run_timeout(self):
         nmap = NmapWrapper()
         mock_proc = AsyncMock()
-        mock_proc.communicate = AsyncMock(side_effect=asyncio.TimeoutError())
+        mock_proc.communicate = AsyncMock(side_effect=TimeoutError())
 
         with patch("asyncio.create_subprocess_exec", return_value=mock_proc):
             result = await nmap.run(target="10.0.0.1", timeout=1)
@@ -149,7 +145,7 @@ class TestNucleiExecution:
             "tags": ["cve"],
             "rate_limit": 100,
         })
-        assert "nuclei" == cmd[0]
+        assert cmd[0] == "nuclei"
         assert "-target" in cmd
         assert "critical,high" in cmd
         assert "-tags" in cmd
@@ -208,7 +204,7 @@ class TestSubfinderExecution:
     def test_build_command(self):
         sf = SubfinderWrapper()
         cmd = sf.build_command("example.com", {"threads": 50, "recursive": True})
-        assert "subfinder" == cmd[0]
+        assert cmd[0] == "subfinder"
         assert "-d" in cmd
         assert "example.com" in cmd
         assert "-recursive" in cmd
@@ -239,7 +235,7 @@ class TestHttpxExecution:
     def test_build_command(self):
         httpx = HttpxWrapper()
         cmd = httpx.build_command("example.com", {"tech_detect": True, "threads": 25})
-        assert "httpx" == cmd[0]
+        assert cmd[0] == "httpx"
         assert "-tech-detect" in cmd
 
     def test_parse_output(self):
@@ -268,7 +264,7 @@ class TestFfufExecution:
     def test_build_command(self):
         ffuf = FfufWrapper()
         cmd = ffuf.build_command("https://example.com", {"wordlist": "/tmp/list.txt"})
-        assert "ffuf" == cmd[0]
+        assert cmd[0] == "ffuf"
         assert "FUZZ" in cmd[1] or any("FUZZ" in c for c in cmd)
 
     def test_parse_output(self):

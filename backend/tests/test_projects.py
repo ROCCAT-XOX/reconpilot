@@ -1,6 +1,5 @@
 """Tests for project CRUD and member management."""
 
-import pytest
 from httpx import AsyncClient
 
 from app.models.project import Project

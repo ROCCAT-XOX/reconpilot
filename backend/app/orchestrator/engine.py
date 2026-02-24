@@ -8,11 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.events import WebSocketEventManager
 from app.models.finding import Finding
 from app.models.scan import Scan, ScanJob
+from app.orchestrator.auto_discover import AutoDiscoverService
 from app.orchestrator.chain_logic import ChainLogicEngine
 from app.orchestrator.profiles import ScanProfile
 from app.services.finding_service import compute_finding_fingerprint
 from app.services.scope_validator import ScopeValidator
-from app.orchestrator.auto_discover import AutoDiscoverService
 from app.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)

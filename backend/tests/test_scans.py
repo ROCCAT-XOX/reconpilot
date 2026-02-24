@@ -3,7 +3,6 @@
 import uuid
 from unittest.mock import AsyncMock, patch
 
-import pytest
 from httpx import AsyncClient
 
 from app.models.project import Project
@@ -99,7 +98,7 @@ class TestScanFallback:
             fallback_called = True
 
         with patch("app.api.v1.scans._try_celery_dispatch", side_effect=ConnectionError("Redis down")), \
-             patch("app.api.v1.scans._run_scan_fallback", side_effect=mock_fallback) as mock_fb:
+             patch("app.api.v1.scans._run_scan_fallback", side_effect=mock_fallback):
             resp = await client.post(
                 f"/api/v1/projects/{test_project.id}/scans",
                 headers=auth_header(test_user),

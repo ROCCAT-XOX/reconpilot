@@ -1,11 +1,10 @@
 """Tests for tool registry and profiles."""
 
-import pytest
 from httpx import AsyncClient
 
 from app.models.user import User
 from app.orchestrator.profiles import get_profile, list_profiles
-from app.tools.registry import ToolRegistry, tool_registry
+from app.tools.registry import tool_registry
 from tests.conftest import auth_header
 
 

@@ -9,7 +9,6 @@ os.environ["SECRET_KEY"] = "test-secret-key-not-for-production-use-1234567890"
 os.environ["REDIS_URL"] = "redis://localhost:6379/0"
 os.environ["ENVIRONMENT"] = "testing"
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -17,10 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.core.database import Base, get_db
 from app.core.security import create_access_token, hash_password
 from app.main import app
-from app.models.finding import Finding, FindingComment
+from app.models.finding import Finding
 from app.models.project import Project
-from app.models.report import Report, ScanComparison
-from app.models.scan import Scan, ScanJob
+from app.models.scan import Scan
 from app.models.scope import ScopeTarget
 from app.models.user import ProjectMember, User
 

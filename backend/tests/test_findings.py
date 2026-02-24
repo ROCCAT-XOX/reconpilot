@@ -1,8 +1,6 @@
 """Tests for findings CRUD and deduplication."""
 
-import uuid
 
-import pytest
 from httpx import AsyncClient
 
 from app.models.finding import Finding

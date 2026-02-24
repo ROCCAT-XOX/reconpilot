@@ -1,10 +1,7 @@
 """Tests for dashboard stats endpoint."""
 
-import pytest
 from httpx import AsyncClient
 
-from app.models.finding import Finding
-from app.models.scan import Scan
 from app.models.user import User
 from tests.conftest import auth_header
 

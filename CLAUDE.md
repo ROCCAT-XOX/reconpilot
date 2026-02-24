@@ -129,6 +129,23 @@ Copy `.env.example` → `.env`. Key variables:
 - `ENVIRONMENT` — `development` | `testing` | `production`
 - Optional: `WPSCAN_API_TOKEN`, `SHODAN_API_KEY`, `CENSYS_API_ID/SECRET`, `VIRUSTOTAL_API_KEY`
 
+## Database Backup
+
+Script: `scripts/backup-db.sh` — pg_dump with gzip compression and 7-day rotation.
+
+```bash
+# Manual run (inside Docker network)
+docker compose exec postgres bash -c 'PGPASSWORD=$POSTGRES_PASSWORD /scripts/backup-db.sh'
+
+# Via cron (host-level)
+0 2 * * * cd /path/to/reconforge && docker compose exec -T postgres pg_dump -U reconforge reconforge | gzip > /backups/reconforge_$(date +\%Y\%m\%d).sql.gz
+
+# Environment variables:
+#   BACKUP_DIR (default: /backups)
+#   RETENTION_DAYS (default: 7)
+#   PGHOST, PGPORT, PGUSER, PGDATABASE
+```
+
 ## Known Issues & TODOs
 
 See `TODO.md` for the full roadmap. Key items:

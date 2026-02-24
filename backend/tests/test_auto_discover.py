@@ -1,13 +1,16 @@
 """Tests for auto-discovery service."""
 
-import json
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from app.orchestrator.auto_discover import AutoDiscoverConfig, AutoDiscoverResult, AutoDiscoverService
+from app.orchestrator.auto_discover import (
+    AutoDiscoverConfig,
+    AutoDiscoverResult,
+    AutoDiscoverService,
+)
 from app.tools.base import ToolResult, ToolStatus
-from app.tools.registry import ToolRegistry, create_tool_registry
+from app.tools.registry import create_tool_registry
 
 
 class TestAutoDiscoverConfig:
@@ -71,10 +74,12 @@ class TestAutoDiscoverService:
             hosts=[{"url": "https://api.example.com"}],
         )
 
-        with patch.object(service.tools.get("subfinder"), "run", return_value=subfinder_result):
-            with patch.object(service.tools.get("httpx"), "run", return_value=httpx_result):
-                config = AutoDiscoverConfig(subdomains=True)
-                result = await service.run(["example.com"], config)
+        with (
+            patch.object(service.tools.get("subfinder"), "run", return_value=subfinder_result),
+            patch.object(service.tools.get("httpx"), "run", return_value=httpx_result),
+        ):
+            config = AutoDiscoverConfig(subdomains=True)
+            result = await service.run(["example.com"], config)
 
         assert "api.example.com" in result.subdomains
         assert "www.example.com" in result.subdomains
@@ -94,10 +99,12 @@ class TestAutoDiscoverService:
             metadata={"technologies": ["Nginx", "PHP"]},
         )
 
-        with patch.object(service.tools.get("httpx"), "run", return_value=httpx_result):
-            with patch.object(service.tools.get("whatweb"), "run", return_value=whatweb_result):
-                config = AutoDiscoverConfig(technologies=True)
-                result = await service.run(["example.com"], config)
+        with (
+            patch.object(service.tools.get("httpx"), "run", return_value=httpx_result),
+            patch.object(service.tools.get("whatweb"), "run", return_value=whatweb_result),
+        ):
+            config = AutoDiscoverConfig(technologies=True)
+            result = await service.run(["example.com"], config)
 
         assert "https://example.com" in result.technologies
         assert "Nginx" in result.technologies["https://example.com"]

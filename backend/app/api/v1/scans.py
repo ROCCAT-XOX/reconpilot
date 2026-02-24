@@ -2,7 +2,7 @@ import asyncio
 import logging
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, HTTPException
 from sqlalchemy import func, select
 
 from app.api.deps import DB, CurrentUser, PaginatedResponse, Pagination, PentesterOrAbove

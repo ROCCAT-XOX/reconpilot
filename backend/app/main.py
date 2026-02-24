@@ -135,6 +135,7 @@ async def health_check():
     # Database check
     try:
         from sqlalchemy import text
+
         from app.core.database import engine
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
@@ -182,7 +183,8 @@ async def app_status():
     # Last scan time
     last_scan_time = None
     try:
-        from sqlalchemy import select, desc
+        from sqlalchemy import desc, select
+
         from app.core.database import async_session
         from app.models.scan import Scan
         async with async_session() as session:
@@ -195,8 +197,8 @@ async def app_status():
             row = result.scalar_one_or_none()
             if row:
                 last_scan_time = row.isoformat()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Failed to fetch last scan time: %s", exc)
 
     return {
         "app": settings.APP_NAME,

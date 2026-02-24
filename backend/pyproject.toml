@@ -48,7 +48,7 @@ line-length = 100
 select = ["E", "F", "I", "N", "W", "S", "B", "UP", "SIM"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101", "S105", "S106", "E501"]  # Allow assert, hardcoded passwords, long lines in tests
+"tests/*" = ["S101", "S105", "S106", "S108", "E501"]  # Allow assert, hardcoded passwords, temp paths, long lines in tests
 "alembic/*" = ["UP", "E501", "I001"]
 "app/config.py" = ["S105"]
 "app/tools/base.py" = ["S603", "S607", "UP042"]  # subprocess calls, partial paths, str+enum
