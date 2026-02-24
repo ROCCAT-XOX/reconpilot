@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import apiClient from '../api/client'
 import Modal from '../components/common/Modal'
 import { ROLES } from '../utils/constants'
-import { formatDateTime } from '../utils/formatters'
 import type { User } from '../types/user'
 
 export default function Team() {

@@ -1,4 +1,3 @@
-import { formatDateTime } from '../../utils/formatters'
 import type { ScanJob } from '../../types/scan'
 
 interface Props {

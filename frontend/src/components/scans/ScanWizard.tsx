@@ -134,7 +134,7 @@ export default function ScanWizard({ scopeTargets, onStart, onClose, loading }: 
 
   const showAdvanced = state.profile !== 'quick'
   const totalSteps = showAdvanced ? 5 : 4
-  const adjustedStep = !showAdvanced && step >= 4 ? step + 1 : step
+  // const adjustedStep = !showAdvanced && step >= 4 ? step + 1 : step
 
   const canNext = () => {
     if (step === 1 && state.profile === 'custom' && state.customTools.length === 0) return false
@@ -820,7 +820,7 @@ function Step4Advanced({ state, update }: StepProps) {
 
 function Step5Review({
   state,
-  scopeTargets,
+  scopeTargets: _scopeTargets,
   getTargets,
   getEstimatedDuration,
   update,

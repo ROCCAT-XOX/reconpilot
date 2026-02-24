@@ -30,7 +30,7 @@ export function useWebSocket(projectId: string | undefined) {
 
     // Handle scan status changes
     client.on('scan_status', (event) => {
-      const { status, scan_id } = event.data || {}
+      const { status, scan_id: _scan_id } = event.data || {}
       if (status) {
         setScanStatus(status)
         if (status === 'running') {
